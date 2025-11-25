@@ -54,8 +54,8 @@ export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
 export const getUserProjects = async (userId) => {
   try {
     const url = userId
-      ? `/unifieddeployment/projects?userId=${userId}`
-      : '/unifieddeployment/projects';
+      ? `/projects/user/${userId}`
+      : '/projects';
     const response = await apiClient.get(url);
     return response.data;
   } catch (error) {
@@ -65,7 +65,7 @@ export const getUserProjects = async (userId) => {
 
 export const getProjectDetails = async (projectId) => {
   try {
-    const response = await apiClient.get(`/unifieddeployment/projects/${projectId}`);
+    const response = await apiClient.get(`/projects/${projectId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -74,7 +74,7 @@ export const getProjectDetails = async (projectId) => {
 
 export const deleteProject = async (projectId) => {
   try {
-    const response = await apiClient.delete(`/unifieddeployment/projects/${projectId}`);
+    const response = await apiClient.delete(`/projects/${projectId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

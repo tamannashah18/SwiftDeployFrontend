@@ -1,7 +1,7 @@
 import apiClient, { storeJwt, getStoredJwt, clearAuth } from './apiClient';
 
 export const startGitHubLogin = () => {
-  window.location.href = 'http://localhost:5000/api/auth/github/login';
+  window.location.href = 'http://localhost:5280/api/auth/github/login';
 };
 
 export const fetchGitHubCallback = async (code) => {
@@ -51,7 +51,7 @@ export const logout = () => {
 };
 
 export const startNetlifyLogin = () => {
-  window.location.href = 'http://localhost:5000/api/auth/netlify/login';
+  window.location.href = 'http://localhost:5280/api/auth/netlify/login';
 };
 
 export const getUserTokens = async () => {

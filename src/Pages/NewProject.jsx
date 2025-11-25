@@ -19,9 +19,9 @@ function NewProject() {
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user'));
     setUser(userData);
-    setIsGitHubUser(userData?.userType === 'GitHub');
+    setIsGitHubUser(userData?.userType == 0);
 
-    if (userData?.userType === 'GitHub') {
+    if (userData?.userType ==0) {
       fetchRepositories();
     }
   }, []);
