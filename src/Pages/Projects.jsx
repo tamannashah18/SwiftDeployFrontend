@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import "../css/Projects.css";
 import { NavigationBar } from "../Components/NavigationBar";
 import { useNavigate } from "react-router-dom";
-import { getUserProjects, deleteProject } from "../api/deployments";
-import { getGitHubRepositories } from "../api/projects";
+import { deleteProject } from "../api/deployments";
+import { getGitHubRepositories, getUserProjects } from "../api/projects";
 
 function RepoDropdown({ repos, selectedRepo, onSelect }) {
   const [open, setOpen] = useState(false);
@@ -60,7 +60,8 @@ function Projects() {
       const user = JSON.parse(localStorage.getItem('user'));
       if (user?.id) {
         const data = await getUserProjects(user.id);
-        setProjects(data.projects || []);
+        console.log('Projects data:', data);
+        setProjects(Array.isArray(data) ? data : (data.projects || []));
       }
     } catch (err) {
       console.error('Failed to fetch projects:', err);
@@ -139,16 +140,16 @@ function Projects() {
             projects.map((proj) => (
               <div
                 className="project-card"
-                key={proj.projectId}
-                onClick={() => navigate(`/project/${proj.projectId}`)}
+                key={proj.id}
+                onClick={() => navigate(`/project/${proj.id}`)}
                 style={{ cursor: 'pointer' }}
               >
                 <div className="project-title">{proj.projectName}</div>
-                <div className="project-desc">{proj.description || 'No description'}</div>
+                <div className="project-desc">{proj.repoId || 'No description'}</div>
                 <div className="project-info-row">
-                  <span className="project-updated">{proj.platform}</span>
-                  <span className={`badge bg-${proj.status === 'Completed' ? 'success' : proj.status === 'Failed' ? 'danger' : 'warning'}`}>
-                    {proj.status}
+                  <span className="project-updated">{proj.branch}</span>
+                  <span className="badge bg-info">
+                    {new Date(proj.createdAt).toLocaleDateString()}
                   </span>
                 </div>
               </div>

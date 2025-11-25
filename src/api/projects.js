@@ -132,3 +132,15 @@ export const getDeploymentsByRepo = async (repoId) => {
     throw error.response?.data || error;
   }
 };
+
+export const getUserProjects = async (userId) => {
+  try {
+    const url = userId
+      ? `/projects/user/${userId}`
+      : '/projects';
+    const response = await apiClient.get(url);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
