@@ -1,6 +1,6 @@
-// src/contexts/AuthContext.jsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import apiClient from '../api/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -34,15 +34,27 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
-  const login = async (userData, token) => {
-    localStorage.setItem('token', token);
+  const login = async (userData, token, githubToken = null) => {
+    localStorage.setItem('jwtToken', token);
     localStorage.setItem('user', JSON.stringify(userData));
+    if (githubToken) {
+      localStorage.setItem('github_access_token', githubToken);
+
+      try {
+        await apiClient.post(`/user/${userData.id}/tokens/github`, JSON.stringify(githubToken), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Failed to save GitHub token to backend:', error);
+      }
+    }
     setCurrentUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('jwtToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('github_access_token');
     setCurrentUser(null);
     navigate('/login');
   };
