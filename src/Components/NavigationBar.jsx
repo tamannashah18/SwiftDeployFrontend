@@ -50,7 +50,7 @@ export const NavigationBar = () => {
               <PiGitForkLight />
             </div>
             <div
-              className={`iconify-icon mb-4 ${isActive('/deployments') ? 'active' : ''}`}
+              className={`iconify-icon terminal-icon mb-4 ${isActive('/deployments') ? 'active' : ''}`}
               onClick={() => navigate('/deployments')}
               title="Deployments"
             >

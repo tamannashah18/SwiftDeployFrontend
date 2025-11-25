@@ -1,0 +1,92 @@
+@media (max-width: 768px) {
+  .min-vh-100[style*="marginLeft"] {
+    margin-left: 0 !important;
+  }
+
+  .nav-bg {
+    width: 100%;
+    height: auto;
+    position: relative;
+    flex-direction: row;
+    padding: 0.5rem;
+  }
+
+  .margin {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .container {
+    flex-direction: row;
+  }
+
+  .top-icons,
+  .bottom-icons {
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+
+  .logo {
+    height: 2.5rem;
+    width: 3rem;
+  }
+
+  .iconify-icon {
+    font-size: 1.25rem;
+    padding: 0.4rem;
+  }
+
+  .iconify-icon.terminal-icon {
+    font-size: 1rem;
+  }
+
+  .container-fluid,
+  .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .card-body {
+    padding: 1rem !important;
+  }
+
+  .display-5 {
+    font-size: 1.75rem !important;
+  }
+
+  .h4 {
+    font-size: 1.25rem !important;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .container-fluid {
+    max-width: 95% !important;
+  }
+
+  .col-lg-4 {
+    flex: 0 0 auto;
+    width: 50%;
+  }
+}
+
+@media (min-width: 1025px) and (max-width: 1440px) {
+  .container-fluid {
+    max-width: 1200px !important;
+  }
+}
+
+@media (min-width: 1441px) {
+  .container-fluid {
+    max-width: 1400px !important;
+  }
+}
+
+.card {
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 63, 181, 0.3) !important;
+}

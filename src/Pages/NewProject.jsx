@@ -4,6 +4,7 @@ import { NavigationBar } from '../Components/NavigationBar';
 import { getGitHubRepositories } from '../api/projects';
 import apiClient from '../api/apiClient';
 import '../css/Forms.css';
+import '../css/Responsive.css';
 
 function NewProject() {
   const navigate = useNavigate();

@@ -45,6 +45,10 @@
   gap: 1.25rem;
 }
 
+.bottom-icons {
+  padding-bottom: 1.5rem;
+}
+
 .iconify-icon {
   color: #ffffff;
   font-size: var(--icon-size);
@@ -53,6 +57,10 @@
   padding: 0.6rem;
   border-radius: 0.5rem;
   position: relative;
+}
+
+.iconify-icon.terminal-icon {
+  font-size: 1.4rem;
 }
 
 .iconify-icon:hover {

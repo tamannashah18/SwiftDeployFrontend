@@ -4,6 +4,7 @@ import { Container, Row, Col, Card, Button, Spinner, Alert, Nav, Badge } from 'r
 import { ArrowLeft, Gear } from 'react-bootstrap-icons';
 import { getProjectDetails, deleteProject, regenerateConfig } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
+import '../css/Responsive.css';
 
 const ProjectDetail = () => {
   const { id } = useParams();
@@ -68,10 +69,10 @@ const ProjectDetail = () => {
 
   if (loading && !project) {
     return (
-      <div className="min-vh-100 bg-light">
+      <div className="min-vh-100" style={{ backgroundColor: '#1a0033' }}>
         <NavigationBar />
         <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
-          <Spinner animation="border" role="status">
+          <Spinner animation="border" role="status" style={{ color: '#b89dff' }}>
             <span className="visually-hidden">Loading...</span>
           </Spinner>
         </div>
@@ -81,11 +82,11 @@ const ProjectDetail = () => {
 
   if (!project) {
     return (
-      <div className="min-vh-100 bg-light">
+      <div className="min-vh-100" style={{ backgroundColor: '#1a0033' }}>
         <NavigationBar />
-        <Container className="py-5 text-center">
+        <Container className="py-5 text-center" style={{ marginLeft: '5rem' }}>
           <Alert variant="danger">Project not found</Alert>
-          <Button variant="outline-primary" onClick={() => navigate('/projects')} className="mt-3">
+          <Button variant="outline-light" onClick={() => navigate('/projects')} className="mt-3">
             <ArrowLeft className="me-2" /> Back to Projects
           </Button>
         </Container>
@@ -94,12 +95,12 @@ const ProjectDetail = () => {
   }
 
   return (
-    <div className="min-vh-100 bg-light">
+    <div className="min-vh-100" style={{ backgroundColor: '#1a0033', marginLeft: '5rem' }}>
       <NavigationBar />
-      <Container className="py-4">
+      <Container fluid className="py-4 px-4" style={{ maxWidth: '1400px' }}>
         <div className="d-flex align-items-center mb-4">
           <Button
-            variant="outline-secondary"
+            variant="outline-light"
             size="sm"
             className="me-3"
             onClick={() => navigate('/projects')}
@@ -107,8 +108,8 @@ const ProjectDetail = () => {
             <ArrowLeft /> Back
           </Button>
           <div>
-            <h1 className="h3 mb-0">{project.projectName}</h1>
-            <p className="text-muted mb-0">{project.description}</p>
+            <h1 className="h3 mb-0" style={{ color: '#ffffff' }}>{project.projectName}</h1>
+            <p className="mb-0" style={{ color: '#b8a3d9' }}>{project.description}</p>
           </div>
           <div className="ms-auto">
             <Badge bg={getStatusBadge(project.status)} className="fs-6">
@@ -119,45 +120,57 @@ const ProjectDetail = () => {
 
         {error && <Alert variant="danger" className="mb-4">{error}</Alert>}
 
-        <Card className="mb-4">
+        <Card className="mb-4" style={{ backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}>
           <Card.Body className="p-0">
-            <Nav variant="tabs" defaultActiveKey="overview" onSelect={(k) => setActiveTab(k)}>
+            <Nav variant="tabs" defaultActiveKey="overview" onSelect={(k) => setActiveTab(k)} style={{ borderBottom: '1px solid #6c3fb5' }}>
               <Nav.Item>
-                <Nav.Link eventKey="overview" className={activeTab === 'overview' ? 'active' : ''}>
+                <Nav.Link
+                  eventKey="overview"
+                  className={activeTab === 'overview' ? 'active' : ''}
+                  style={{ color: activeTab === 'overview' ? '#ffffff' : '#b8a3d9', backgroundColor: activeTab === 'overview' ? '#6c3fb5' : 'transparent' }}
+                >
                   Overview
                 </Nav.Link>
               </Nav.Item>
               <Nav.Item>
-                <Nav.Link eventKey="deployment" className={activeTab === 'deployment' ? 'active' : ''}>
+                <Nav.Link
+                  eventKey="deployment"
+                  className={activeTab === 'deployment' ? 'active' : ''}
+                  style={{ color: activeTab === 'deployment' ? '#ffffff' : '#b8a3d9', backgroundColor: activeTab === 'deployment' ? '#6c3fb5' : 'transparent' }}
+                >
                   Deployment Info
                 </Nav.Link>
               </Nav.Item>
               <Nav.Item>
-                <Nav.Link eventKey="configuration" className={activeTab === 'configuration' ? 'active' : ''}>
+                <Nav.Link
+                  eventKey="configuration"
+                  className={activeTab === 'configuration' ? 'active' : ''}
+                  style={{ color: activeTab === 'configuration' ? '#ffffff' : '#b8a3d9', backgroundColor: activeTab === 'configuration' ? '#6c3fb5' : 'transparent' }}
+                >
                   Configuration
                 </Nav.Link>
               </Nav.Item>
             </Nav>
 
-            <div className="p-4">
+            <div className="p-4" style={{ color: '#ffffff' }}>
               {activeTab === 'overview' && (
                 <div>
-                  <h5 className="mb-4">Project Information</h5>
+                  <h5 className="mb-4" style={{ color: '#ffffff' }}>Project Information</h5>
                   <Row>
                     <Col md={6} className="mb-3">
-                      <strong>Platform:</strong>
-                      <div className="text-capitalize">{project.platform}</div>
+                      <strong style={{ color: '#b89dff' }}>Platform:</strong>
+                      <div className="text-capitalize" style={{ color: '#b8a3d9' }}>{project.platform}</div>
                     </Col>
                     <Col md={6} className="mb-3">
-                      <strong>Status:</strong>
-                      <div>{project.statusMessage || project.status}</div>
+                      <strong style={{ color: '#b89dff' }}>Status:</strong>
+                      <div style={{ color: '#b8a3d9' }}>{project.statusMessage || project.status}</div>
                     </Col>
                     <Col md={6} className="mb-3">
-                      <strong>Created:</strong>
-                      <div>{new Date(project.createdAt).toLocaleString()}</div>
+                      <strong style={{ color: '#b89dff' }}>Created:</strong>
+                      <div style={{ color: '#b8a3d9' }}>{new Date(project.createdAt).toLocaleString()}</div>
                     </Col>
                     <Col md={6} className="mb-3">
-                      <strong>Progress:</strong>
+                      <strong style={{ color: '#b89dff' }}>Progress:</strong>
                       <div className="progress mt-2">
                         <div
                           className={`progress-bar bg-${getStatusBadge(project.status)}`}
@@ -180,13 +193,13 @@ const ProjectDetail = () => {
 
               {activeTab === 'deployment' && (
                 <div>
-                  <h5 className="mb-4">Deployment Details</h5>
+                  <h5 className="mb-4" style={{ color: '#ffffff' }}>Deployment Details</h5>
 
                   {project.githubRepoUrl && (
                     <div className="mb-3">
-                      <strong>GitHub Repository:</strong>
+                      <strong style={{ color: '#b89dff' }}>GitHub Repository:</strong>
                       <div>
-                        <a href={project.githubRepoUrl} target="_blank" rel="noopener noreferrer">
+                        <a href={project.githubRepoUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#b89dff' }}>
                           {project.githubRepoName || project.githubRepoUrl}
                         </a>
                       </div>
@@ -195,9 +208,9 @@ const ProjectDetail = () => {
 
                   {project.deploymentUrl && (
                     <div className="mb-3">
-                      <strong>Deployment URL:</strong>
+                      <strong style={{ color: '#b89dff' }}>Deployment URL:</strong>
                       <div>
-                        <a href={project.deploymentUrl} target="_blank" rel="noopener noreferrer">
+                        <a href={project.deploymentUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#b89dff' }}>
                           {project.deploymentUrl}
                         </a>
                       </div>
@@ -206,9 +219,9 @@ const ProjectDetail = () => {
 
                   {project.status === 'Completed' && project.deploymentUrl && (
                     <Button
-                      variant="primary"
                       onClick={() => window.open(project.deploymentUrl, '_blank')}
                       className="mt-3"
+                      style={{ backgroundColor: '#6c3fb5', borderColor: '#6c3fb5', color: '#ffffff' }}
                     >
                       View Live Site
                     </Button>
@@ -224,7 +237,7 @@ const ProjectDetail = () => {
 
               {activeTab === 'configuration' && (
                 <div>
-                  <h5 className="mb-4">Configuration</h5>
+                  <h5 className="mb-4" style={{ color: '#ffffff' }}>Configuration</h5>
 
                   {project.config && (
                     <div className="bg-dark text-light p-3 rounded mb-3" style={{ fontFamily: 'monospace', fontSize: '14px' }}>
@@ -235,7 +248,7 @@ const ProjectDetail = () => {
                   )}
 
                   <Button
-                    variant="outline-primary"
+                    variant="outline-light"
                     onClick={handleRegenerateConfig}
                     size="sm"
                   >
@@ -247,13 +260,13 @@ const ProjectDetail = () => {
           </Card.Body>
         </Card>
 
-        <Card className="border-danger">
+        <Card className="border-danger" style={{ backgroundColor: '#2d1b4e', borderColor: '#dc3545 !important' }}>
           <Card.Body>
-            <h5 className="text-danger mb-3">Danger Zone</h5>
+            <h5 className="mb-3" style={{ color: '#ff6b6b' }}>Danger Zone</h5>
             <div className="d-flex justify-content-between align-items-center">
               <div>
-                <h6 className="mb-1">Delete this project</h6>
-                <p className="text-muted small mb-0">
+                <h6 className="mb-1" style={{ color: '#ffffff' }}>Delete this project</h6>
+                <p className="small mb-0" style={{ color: '#b8a3d9' }}>
                   Once you delete a project, there is no going back. Please be certain.
                 </p>
               </div>
