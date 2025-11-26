@@ -52,10 +52,13 @@
 /* Projects Grid */
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(28rem, 1fr)); /* Wider minimum width */
-  gap: 2rem; /* Increased gap for better spacing */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
   width: 100%;
-  max-width: 100%;
+  margin: 0;
+  padding: 0.25rem 0;
+  max-height: 100%;
+  overflow-y: auto;
 }
 
 /* Project cards */
@@ -67,8 +70,13 @@
   display: flex;
   flex-direction: column;
   transition: transform 0.2s, box-shadow 0.2s;
-  height: 100%;
-  box-sizing: border-box;
+  height: auto;
+  min-height: 180px;
+  word-break: break-word;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 0.5rem;
 }
 
 .project-card:hover {
@@ -120,32 +128,57 @@
 .modal-overlay {
   position: fixed;
   top: 0;
-  left: var(--sidebar-width);
-  width: calc(100% - var(--sidebar-width));
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.6);
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   justify-content: center;
-  align-items: flex-start; /* start alignment, so we can move card up */
-  padding-top: 5vh; /* pushes modal down a bit from very top */
-  z-index: 100;
+  align-items: flex-start;
+  padding: 2rem;
+  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.7);
 }
 
-/* Modal card box - wider + moved slightly upward */
-/* Modal card - BIGGER */
+/* Modal card box - responsive and contained */
 .modal-card {
-  background: #2b1858;
-  padding: 2.5rem; /* more padding inside */
+  background: #3a1f6b;
+  padding: 1.25rem;
   border-radius: 1rem;
-  width: 100%;
-  max-width: 42rem; /* was 35rem — wider modal (~672px) */
-  min-height: 16rem; /* give extra height baseline */
+  width: 95%;
+  max-width: 90vw;
+  max-height: 90vh;
   color: #fff;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  border: 1px solid #6c3fb5;
+  margin: 1rem auto;
   position: relative;
+  overflow: hidden;
   animation: fadeInUp 0.25s ease-out;
+}
+
+/* Modal body with scroll */
+.modal-card .modal-body {
+  padding: 0.5rem 0;
+  overflow-y: auto;
+  flex: 1;
+  margin-right: -0.5rem; /* Compensate for scrollbar */
+  padding-right: 0.5rem; /* Space for scrollbar */
+  max-height: calc(90vh - 120px); /* Account for header and padding */
+}
+
+/* Custom scrollbar for modal */
+.modal-card .modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-card .modal-body::-webkit-scrollbar-thumb {
+  background-color: #6c3fb5;
+  border-radius: 3px;
+}
+
+.modal-card .modal-body::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* Smooth upward entry animation */
@@ -168,7 +201,7 @@
   border: none;
   font-size: 1rem; /* bigger text for repo names */
   font-weight: 500;
-  background-color: #2b1858; /* matches modal background */
+  background-color: #3a1f6b; /* Lighter purple to match modal */
   color: #fff;
   outline: none;
   appearance: none;
@@ -192,7 +225,7 @@
 
 .modal-card select:hover,
 .modal-card select:focus {
-  background-color: #241347; /* darker tone of purple */
+  background-color: #4b2a8a; /* Slightly darker tone of the new purple */
   border-color: #6a4bd6;
 }
 
