@@ -73,13 +73,12 @@ export const savePlatformToken = async (platform, token) => {
       throw new Error('User not found. Please log in again.');
     }
 
-    // Send the token as a raw string, not as JSON
     const response = await apiClient.post(
-      `/user/${user.id}/tokens/${platform}`, 
-      token,  // Send the token directly, not wrapped in an object
+      `/user/${user.id}/tokens/${platform}`,
+      JSON.stringify(token),
       {
         headers: {
-          'Content-Type': 'text/plain'  // Set content type to text/plain
+          'Content-Type': 'application/json'
         }
       }
     );

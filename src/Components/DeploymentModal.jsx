@@ -261,7 +261,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
                         </div>
                         <h6 style={{ color: '#ffffff', marginTop: '1rem' }}>{config?.name}</h6>
                         <small style={{ color: '#ffffff' }}>
-                          {tokens[platform] ? 'Connected' : 'Not connected'}
+                          {tokens[platformName] ? 'Connected' : 'Not connected'}
                         </small>
                       </Card.Body>
                     </Card>
