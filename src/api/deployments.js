@@ -153,7 +153,21 @@ export const analyzeAndSuggest = async (owner, repo, branch, token) => {
 
 export const deployToUnifiedPlatform = async (deploymentData) => {
   try {
-    const response = await apiClient.post('/unifieddeployment/deploy', deploymentData);
+    const user = JSON.parse(localStorage.getItem('user'));
+    const githubToken = localStorage.getItem('github_access_token');
+
+    const payload = {
+      userId: user.id,
+      projectName: deploymentData.projectId || 'Deployed Project',
+      description: deploymentData.description || 'Deployed via SwiftDeploy',
+      platform: deploymentData.platform,
+      gitHubRepo: `${deploymentData.owner}/${deploymentData.repo}`,
+      branch: deploymentData.branch || 'main',
+      gitHubToken: githubToken,
+      config: deploymentData.config || {}
+    };
+
+    const response = await apiClient.post('/unifieddeployment/deploy-with-github', payload);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
