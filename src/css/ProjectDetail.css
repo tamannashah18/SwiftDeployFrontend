@@ -292,6 +292,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%;
 }
 
 .info-card-enhanced:hover {
@@ -411,6 +412,7 @@
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   overflow: hidden;
+  width: 100%;
 }
 
 .config-card-enhanced .card-body {
