@@ -12,9 +12,19 @@
 
 html, body, #root {
   height: 100%;
-  overscroll-behavior: contain; /* prevent bounce/overscroll effect */
-  background: #20003a; /* or your page background color */
-  overflow-x: hidden; /* prevent horizontal scroll */
+  overscroll-behavior: contain;
+  background: #20003a;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 body {

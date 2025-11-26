@@ -51,49 +51,36 @@ const DeploymentModal = ({ show, onHide, project }) => {
   };
 
   const analyzeProject = async () => {
-    if (!project.repoId) {
+    if (!project?.repoId) {
       setError('GitHub repository information not found');
       return;
     }
 
-    setError('');
-    setLoading(true);
-
     try {
-      const [owner, repo] = project.repoId.split('/');
-      const branch = project.branch || 'main';
-      const token = tokens['github-pages'];
+      setLoading(true);
+      const result = await analyzeAndSuggest(project._id);
 
-      const result = await analyzeAndSuggest(owner, repo, branch, token);
-      
       if (result.analysis) {
-        // Only include platforms that are in our platformConfig
-        const supportedPlatforms = (result.analysis.allSuggestions || []).filter(
-          platform => platform.platform.toLowerCase() in platformConfig
-        );
-        
-        setPlatforms(supportedPlatforms);
-        
-        // Only set recommended platform if it's in our supported platforms
-        const recommended = result.analysis.recommendedPlatform?.platform;
-        if (recommended && recommended.toLowerCase() in platformConfig) {
-          setRecommendedPlatform(recommended);
-        } else {
-          setRecommendedPlatform(null);
-        }
-        
         setDetectedTech({
           framework: result.analysis.detectedTechnologies?.framework || 'Not detected',
           buildTool: result.analysis.detectedTechnologies?.buildTool || 'Not detected',
           packageManager: result.analysis.detectedTechnologies?.packageManager || 'Not detected',
           technologies: result.analysis.detectedTechnologies?.technologies || []
         });
+
+        const recommended = result.analysis.recommendedPlatform?.platform?.toLowerCase();
+        if (recommended && platforms.some(p => p.platform === recommended)) {
+          setRecommendedPlatform(recommended);
+        } else {
+          setRecommendedPlatform('vercel');
+        }
+
         setStep('select');
-      } else {
-        throw new Error('Invalid response format from server');
       }
     } catch (err) {
-      setError(err.message || 'Failed to analyze project');
+      console.error('Error analyzing project:', err);
+      setError('Using default platforms.');
+      setStep('select');
     } finally {
       setLoading(false);
     }
