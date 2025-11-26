@@ -86,17 +86,18 @@ const DeploymentModal = ({ show, onHide, project }) => {
     }
   };
 
-  const handlePlatformSelect = (platform) => {
-    setSelectedPlatform(platform);
-    const config = platformConfig[platform];
+  const handlePlatformSelect = (platformObj) => {
+    const platformName = platformObj.platform.toLowerCase();
+    setSelectedPlatform(platformName);
+    const config = platformConfig[platformName];
 
-    if (config?.requiresOAuth && platform === 'netlify') {
-      if (!tokens[platform]) {
+    if (config?.requiresOAuth && platformName === 'netlify') {
+      if (!tokens[platformName]) {
         setStep('oauth');
         return;
       }
     } else {
-      if (!tokens[platform]) {
+      if (!tokens[platformName]) {
         setStep('token');
         return;
       }
@@ -233,13 +234,13 @@ const DeploymentModal = ({ show, onHide, project }) => {
                             <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
                             <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
                           </div>
-                          {isRecommended && (
-                            <Badge bg="success" className="d-flex align-items-center gap-1">
-                              <FaCheckCircle /> Recommended
-                            </Badge>
-                          )}
-                          <div className="ms-auto">
-                            <Badge bg="dark" className="ms-2" style={{ color: '#ffffff' }}>
+                          <div className="d-flex align-items-center gap-2 ms-auto">
+                            {isRecommended && (
+                              <Badge bg="success" className="d-flex align-items-center gap-1">
+                                <FaCheckCircle /> Recommended
+                              </Badge>
+                            )}
+                            <Badge bg="dark" style={{ color: '#ffffff' }}>
                               Score: {platform.score}/100
                             </Badge>
                           </div>
