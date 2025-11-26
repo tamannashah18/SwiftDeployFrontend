@@ -139,9 +139,9 @@ export const deleteDeployment = async (deploymentId) => {
 
 export const analyzeAndSuggest = async (owner, repo, branch, token) => {
   try {
-    const response = await apiClient.post('/unifieddeployment/analyze-and-suggest', {
+    const response = await apiClient.post('/repositories/analyze-and-suggest', {
       owner,
-      repo,
+      repoName: repo,
       branch,
       token
     });

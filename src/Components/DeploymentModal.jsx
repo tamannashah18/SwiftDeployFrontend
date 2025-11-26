@@ -14,6 +14,12 @@ const DeploymentModal = ({ show, onHide, project }) => {
   const [tokenInput, setTokenInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [detectedTech, setDetectedTech] = useState({
+    framework: '',
+    buildTool: '',
+    packageManager: '',
+    technologies: []
+  });
 
   const platformConfig = {
     netlify: { name: 'Netlify', icon: SiNetlify, color: '#00C7B7', requiresOAuth: true },
@@ -45,25 +51,34 @@ const DeploymentModal = ({ show, onHide, project }) => {
   };
 
   const analyzeProject = async () => {
-    if (!project.githubRepoUrl) {
-      setError('GitHub repository URL not found');
+    if (!project.repoId) {
+      setError('GitHub repository information not found');
       return;
     }
 
     setError('');
+    setLoading(true);
 
     try {
-      const urlParts = project.githubRepoUrl.split('/');
-      const owner = urlParts[urlParts.length - 2];
-      const repo = urlParts[urlParts.length - 1].replace('.git', '');
+      const [owner, repo] = project.repoId.split('/');
       const branch = project.branch || 'main';
       const token = tokens['github-pages'];
 
       const result = await analyzeAndSuggest(owner, repo, branch, token);
-
-      setPlatforms(result.platforms || []);
-      setRecommendedPlatform(result.recommendedPlatform);
-      setStep('select');
+      
+      if (result.analysis) {
+        setPlatforms(result.analysis.allSuggestions || []);
+        setRecommendedPlatform(result.analysis.recommendedPlatform?.platform || null);
+        setDetectedTech({
+          framework: result.analysis.detectedTechnologies?.framework || 'Not detected',
+          buildTool: result.analysis.detectedTechnologies?.buildTool || 'Not detected',
+          packageManager: result.analysis.detectedTechnologies?.packageManager || 'Not detected',
+          technologies: result.analysis.detectedTechnologies?.technologies || []
+        });
+        setStep('select');
+      } else {
+        throw new Error('Invalid response format from server');
+      }
     } catch (err) {
       setError(err.message || 'Failed to analyze project');
     } finally {
@@ -122,17 +137,19 @@ const DeploymentModal = ({ show, onHide, project }) => {
     setError('');
 
     try {
-      const urlParts = project.githubRepoUrl.split('/');
-      const owner = urlParts[urlParts.length - 2];
-      const repo = urlParts[urlParts.length - 1].replace('.git', '');
+      if (!project.repoId) {
+        throw new Error('GitHub repository information not found');
+      }
 
+      const [owner, repo] = project.repoId.split('/');
       const deploymentData = {
-        projectId: project.projectId,
+        projectId: project._id || project.id,
         platform: selectedPlatform,
         owner,
         repo,
         branch: project.branch || 'main',
         token: tokens[selectedPlatform],
+        config: project.config || {}
       };
 
       await deployToUnifiedPlatform(deploymentData);
@@ -171,13 +188,32 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
         {step === 'select' && (
           <div>
-            <h5 className="mb-4" style={{ color: '#ffffff' }}>Select Deployment Platform</h5>
+            <h5 className="mb-3" style={{ color: '#ffffff' }}>Detected Technologies</h5>
+            <div className="mb-4 p-3" style={{ backgroundColor: '#2d1b4e', borderRadius: '8px', color: '#ffffff' }}>
+              <div className="d-flex flex-wrap gap-3">
+                {detectedTech.technologies.map((tech, index) => (
+                  <Badge key={index} bg="secondary" className="px-3 py-2">
+                    {tech}
+                  </Badge>
+                ))}
+              </div>
+              <div className="mt-3" style={{ color: '#e0d6ff' }}>
+                <small>
+                  Framework: {detectedTech.framework} • 
+                  Build Tool: {detectedTech.buildTool} • 
+                  Package Manager: {detectedTech.packageManager}
+                </small>
+              </div>
+            </div>
+
+            <h5 className="mb-3" style={{ color: '#ffffff' }}>Select Deployment Platform</h5>
 
             <div className="row g-3">
-              {platforms.map((platform) => {
-                const config = platformConfig[platform];
-                const Icon = config?.icon;
-                const isRecommended = platform === recommendedPlatform;
+              {platforms.map((platform, index) => {
+                const platformName = platform.platform.toLowerCase();
+                const config = platformConfig[platformName];
+                const Icon = config?.icon || FaGithub;
+                const isRecommended = platform.isRecommended;
 
                 return (
                   <div key={platform} className="col-md-6">
@@ -193,15 +229,33 @@ const DeploymentModal = ({ show, onHide, project }) => {
                     >
                       <Card.Body>
                         <div className="d-flex align-items-center justify-content-between mb-3">
-                          {Icon && <Icon size={32} style={{ color: config.color }} />}
+                          <div className="d-flex align-items-center gap-2">
+                            <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
+                            <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
+                          </div>
                           {isRecommended && (
                             <Badge bg="success" className="d-flex align-items-center gap-1">
                               <FaCheckCircle /> Recommended
                             </Badge>
                           )}
+                          <div className="ms-auto">
+                            <Badge bg="dark" className="ms-2" style={{ color: '#ffffff' }}>
+                              Score: {platform.score}/100
+                            </Badge>
+                          </div>
                         </div>
-                        <h6 style={{ color: '#ffffff' }}>{config?.name}</h6>
-                        <small style={{ color: '#b8a3d9' }}>
+                        <div className="mt-2">
+                          <p className="mb-2" style={{ color: '#ffffff' }}>{platform.reason}</p>
+                          <div className="d-flex flex-wrap gap-1">
+                            {platform.features?.map((feature, i) => (
+                              <Badge key={i} bg="info" className="me-1 mb-1" style={{ color: '#ffffff' }}>
+                                {feature}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <h6 style={{ color: '#ffffff', marginTop: '1rem' }}>{config?.name}</h6>
+                        <small style={{ color: '#ffffff' }}>
                           {tokens[platform] ? 'Connected' : 'Not connected'}
                         </small>
                       </Card.Body>
@@ -218,7 +272,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
             <h5 className="mb-4" style={{ color: '#ffffff' }}>
               Connect to {platformConfig[selectedPlatform]?.name}
             </h5>
-            <p style={{ color: '#b8a3d9' }}>
+            <p style={{ color: '#ffffff' }}>
               You need to authorize {platformConfig[selectedPlatform]?.name} to deploy your project.
             </p>
             <Button
@@ -236,7 +290,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
             <h5 className="mb-4" style={{ color: '#ffffff' }}>
               Enter {platformConfig[selectedPlatform]?.name} Token
             </h5>
-            <p style={{ color: '#b8a3d9' }}>
+            <p style={{ color: '#ffffff' }}>
               Please provide your API token for {platformConfig[selectedPlatform]?.name}
             </p>
             <Form.Group className="mb-3">
@@ -270,15 +324,15 @@ const DeploymentModal = ({ show, onHide, project }) => {
               <Card.Body>
                 <div className="mb-3">
                   <strong style={{ color: '#b89dff' }}>Project:</strong>
-                  <div style={{ color: '#b8a3d9' }}>{project.projectName}</div>
+                  <div style={{ color: '#ffffff' }}>{project.projectName}</div>
                 </div>
                 <div className="mb-3">
                   <strong style={{ color: '#b89dff' }}>Platform:</strong>
-                  <div style={{ color: '#b8a3d9' }}>{platformConfig[selectedPlatform]?.name}</div>
+                  <div style={{ color: '#ffffff' }}>{platformConfig[selectedPlatform]?.name}</div>
                 </div>
                 <div className="mb-3">
                   <strong style={{ color: '#b89dff' }}>Repository:</strong>
-                  <div style={{ color: '#b8a3d9' }}>{project.githubRepoUrl}</div>
+                  <div style={{ color: '#ffffff' }}>{project.githubRepoUrl}</div>
                 </div>
               </Card.Body>
             </Card>
