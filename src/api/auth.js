@@ -39,7 +39,7 @@ export const login = async (credentials) => {
 
 export const getProfile = async () => {
   try {
-    const response = await apiClient.get('/users/profile');
+    const response = await apiClient.get('/user/profile');
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -60,13 +60,12 @@ export const getUserTokens = async () => {
     if (!user?.id) {
       throw new Error('User not found');
     }
-    const response = await apiClient.get(`/users/${user.id}/tokens`);
+    const response = await apiClient.get(`/user/${user.id}/all-tokens`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
   }
 };
-
 export const savePlatformToken = async (platform, token) => {
   try {
     const user = JSON.parse(localStorage.getItem('user'));
@@ -74,15 +73,20 @@ export const savePlatformToken = async (platform, token) => {
       throw new Error('User not found. Please log in again.');
     }
 
-    const response = await apiClient.post(`/user/${user.id}/tokens/${platform}`, JSON.stringify(token), {
-      headers: {
-        'Content-Type': 'application/json'
+    // Send the token as a raw string, not as JSON
+    const response = await apiClient.post(
+      `/user/${user.id}/tokens/${platform}`, 
+      token,  // Send the token directly, not wrapped in an object
+      {
+        headers: {
+          'Content-Type': 'text/plain'  // Set content type to text/plain
+        }
       }
-    });
+    );
     return response.data;
   } catch (error) {
+    console.error('Error saving token:', error);
     throw error.response?.data || error;
   }
 };
-
 export { storeJwt, getStoredJwt };
