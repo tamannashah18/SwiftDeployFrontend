@@ -193,22 +193,59 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
         {step === 'select' && (
           <div>
-            <h5 className="mb-3" style={{ color: '#ffffff' }}>Detected Technologies</h5>
-            <div className="mb-4 p-3" style={{ backgroundColor: '#2d1b4e', borderRadius: '8px', color: '#ffffff' }}>
-              <div className="d-flex flex-wrap gap-3">
-                {detectedTech.technologies.map((tech, index) => (
-                  <Badge key={index} bg="secondary" className="px-3 py-2">
-                    {tech}
-                  </Badge>
-                ))}
-              </div>
-              <div className="mt-3" style={{ color: '#e0d6ff' }}>
-                <small>
-                  Framework: {detectedTech.framework} • 
-                  Build Tool: {detectedTech.buildTool} • 
-                  Package Manager: {detectedTech.packageManager}
-                </small>
-              </div>
+            <div className="mb-4">
+              <h5 className="mb-3" style={{ color: '#ffffff', fontWeight: '600' }}>
+                <FaCheckCircle style={{ color: '#10b981', marginRight: '8px' }} />
+                Detected Technologies
+              </h5>
+              <Card style={{
+                backgroundColor: '#2d1b4e',
+                border: '2px solid #6c3fb5',
+                borderRadius: '12px',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)'
+              }}>
+                <Card.Body className="p-4">
+                  <div className="d-flex flex-wrap gap-2 mb-3">
+                    {detectedTech.technologies.map((tech, index) => (
+                      <Badge
+                        key={index}
+                        style={{
+                          backgroundColor: '#6c3fb5',
+                          color: '#ffffff',
+                          padding: '8px 16px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          borderRadius: '6px'
+                        }}
+                      >
+                        {tech}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-3" style={{ borderTop: '1px solid #6c3fb5' }}>
+                    <div className="row g-3" style={{ color: '#e0d6ff', fontSize: '14px' }}>
+                      <div className="col-md-4">
+                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                          Framework
+                        </div>
+                        <div>{detectedTech.framework}</div>
+                      </div>
+                      <div className="col-md-4">
+                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                          Build Tool
+                        </div>
+                        <div>{detectedTech.buildTool}</div>
+                      </div>
+                      <div className="col-md-4">
+                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                          Package Manager
+                        </div>
+                        <div>{detectedTech.packageManager}</div>
+                      </div>
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
             </div>
 
             <h5 className="mb-3" style={{ color: '#ffffff' }}>Select Deployment Platform</h5>
@@ -324,25 +361,69 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
         {step === 'confirm' && (
           <div className="py-4">
-            <h5 className="mb-4 text-center" style={{ color: '#ffffff' }}>Confirm Deployment</h5>
+            <h5 className="mb-4 text-center" style={{ color: '#ffffff', fontWeight: '600', fontSize: '24px' }}>
+              Ready to Deploy
+            </h5>
+            <p className="text-center mb-4" style={{ color: '#b8a3d9' }}>
+              Review your deployment configuration
+            </p>
             <Card style={{
               backgroundColor: '#2d1b4e',
-              border: '1px solid #6c3fb5',
-              maxWidth: '500px',
-              margin: '0 auto'
+              border: '2px solid #6c3fb5',
+              borderRadius: '12px',
+              maxWidth: '550px',
+              margin: '0 auto',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)'
             }}>
               <Card.Body className="p-4">
-                <div className="mb-3">
-                  <strong style={{ color: '#b89dff' }}>Project:</strong>
-                  <div style={{ color: '#ffffff', marginTop: '4px' }}>{project.projectName}</div>
+                <div className="mb-4">
+                  <div className="d-flex align-items-center mb-2">
+                    <FaGithub style={{ color: '#b89dff', marginRight: '8px', fontSize: '18px' }} />
+                    <strong style={{ color: '#b89dff', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Project</strong>
+                  </div>
+                  <div style={{
+                    color: '#ffffff',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    paddingLeft: '26px'
+                  }}>
+                    {project.projectName}
+                  </div>
                 </div>
-                <div className="mb-3">
-                  <strong style={{ color: '#b89dff' }}>Platform:</strong>
-                  <div style={{ color: '#ffffff', marginTop: '4px' }}>{platformConfig[selectedPlatform]?.name}</div>
+                <div className="mb-4">
+                  <div className="d-flex align-items-center mb-2">
+                    {platformConfig[selectedPlatform]?.icon && React.createElement(platformConfig[selectedPlatform].icon, {
+                      style: { color: platformConfig[selectedPlatform]?.color || '#b89dff', marginRight: '8px', fontSize: '18px' }
+                    })}
+                    <strong style={{ color: '#b89dff', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Platform</strong>
+                  </div>
+                  <div style={{
+                    color: '#ffffff',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    paddingLeft: '26px'
+                  }}>
+                    {platformConfig[selectedPlatform]?.name}
+                  </div>
                 </div>
-                <div className="mb-3">
-                  <strong style={{ color: '#b89dff' }}>Repository:</strong>
-                  <div style={{ color: '#ffffff', marginTop: '4px', wordBreak: 'break-all' }}>{project.githubRepoUrl}</div>
+                <div className="mb-0">
+                  <div className="d-flex align-items-center mb-2">
+                    <FaGithub style={{ color: '#b89dff', marginRight: '8px', fontSize: '18px' }} />
+                    <strong style={{ color: '#b89dff', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Repository</strong>
+                  </div>
+                  <div style={{
+                    color: '#e0d6ff',
+                    fontSize: '14px',
+                    wordBreak: 'break-all',
+                    paddingLeft: '26px',
+                    fontFamily: 'monospace',
+                    backgroundColor: '#1a0033',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    marginLeft: '26px'
+                  }}>
+                    {project.githubRepoUrl}
+                  </div>
                 </div>
               </Card.Body>
             </Card>
