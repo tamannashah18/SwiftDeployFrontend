@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../api/apiClient';
+import { savePlatformToken } from '../api/auth';
 
 const AuthContext = createContext(null);
 
@@ -41,9 +42,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('github_access_token', githubToken);
 
       try {
-        await apiClient.post(`/user/${userData.id}/tokens/github`, JSON.stringify(githubToken), {
-          headers: { 'Content-Type': 'application/json' }
-        });
+        await savePlatformToken('github', githubToken);
+        console.log('GitHub token saved to database successfully');
       } catch (error) {
         console.error('Failed to save GitHub token to backend:', error);
       }

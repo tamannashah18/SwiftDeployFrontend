@@ -1,61 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';const updatePlatformToken = async (userId, platform, token) => {
-  if (!userId || !platform || !token) {
-    console.error('Missing required parameters for updatePlatformToken:', { userId, platform, token: token ? 'token-exists' : 'no-token' });
-    return;
-  }
-
-  try {
-    console.log(`Updating ${platform} token for user ${userId}`);
-    const response = await axios.post(
-      `http://localhost:5280/api/user/${userId}/tokens/${platform}`, 
-      token, // Send as raw string
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('jwtToken')}`
-        }
-      }
-    );
-    console.log('Token update successful:', response.data);
-    return response.data;
-  } catch (error) {
-    if (error.response) {
-      console.error('Error updating token - Server responded with:', {
-        status: error.response.status,
-        data: error.response.data,
-        headers: error.response.headers
-      });
-      
-      if (error.response.status === 400 || error.response.status === 500) {
-        console.log('Attempting to handle duplicate key error...');
-        try {
-          const updateResponse = await axios.post(
-            `http://localhost:5280/api/user/${userId}/tokens/${platform}`, 
-            token,
-            {
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('jwtToken')}`
-              }
-            }
-          );
-          console.log('Token update via PATCH successful:', updateResponse.data);
-          return updateResponse.data;
-        } catch (patchError) {
-          console.error('Failed to update token via PATCH:', patchError.response?.data || patchError.message);
-          throw patchError;
-        }
-      }
-    } else if (error.request) {
-      console.error('No response received:', error.request);
-    } else {
-      console.error('Error setting up request:', error.message);
-    }
-    throw error;
-  }
-};
+import axios from 'axios';
+import { savePlatformToken } from '../api/auth';
 const AuthCallback = () => {
   const hasRun = useRef(false);
   const navigate = useNavigate();
@@ -93,8 +39,11 @@ const AuthCallback = () => {
       localStorage.setItem('user', JSON.stringify(response.data.user));
       localStorage.setItem('jwtToken', response.data.token);
       console.log('Tokens set, navigating to /projects');
-      updatePlatformToken(response.data.user.id, 'github', token).then(() => {
-        console.log('Token updated successfully');
+      savePlatformToken('github', token).then(() => {
+        console.log('GitHub token saved to database successfully');
+        navigate('/projects');
+      }).catch(err => {
+        console.error('Failed to save GitHub token:', err);
         navigate('/projects');
       });
     }
@@ -121,4 +70,3 @@ const AuthCallback = () => {
 };
 
 export default AuthCallback;
-export {updatePlatformToken};
