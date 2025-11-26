@@ -34,10 +34,10 @@ const DeploymentModal = ({ show, onHide, project }) => {
     try {
       const tokenData = await getUserTokens();
       setTokens({
-        netlify: tokenData.netlifyToken,
-        vercel: tokenData.vercelToken,
-        'github-pages': tokenData.githubToken,
-        cloudflare: tokenData.cloudflareToken,
+        netlify: tokenData.hasNetlifyToken,
+        vercel: tokenData.hasVercelToken,
+        'github-pages': tokenData.hasGitHubToken,
+        cloudflare: tokenData.hasCloudflareToken,
       });
     } catch (err) {
       console.error('Error fetching tokens:', err);

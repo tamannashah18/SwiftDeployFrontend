@@ -14,7 +14,7 @@ function Profile() {
 
   // Load token and user from localStorage on mount
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
+    const storedToken = localStorage.getItem("token") || localStorage.getItem("jwtToken");
     const storedUser = localStorage.getItem("user");
     if (storedToken && storedUser) {
       const parsedUser = JSON.parse(storedUser);

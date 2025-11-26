@@ -4,7 +4,7 @@ import { NavigationBar } from '../Components/NavigationBar';
 import { startGitHubLogin, startNetlifyLogin, getUserTokens } from '../api/auth';
 import { getUserProjects } from '../api/deployments';
 import { FaGithub, FaNetworkWired, FaCloudflare, FaRocket } from 'react-icons/fa';
-import { SiNetlify, SiVercel, SiRailway, SiRender } from 'react-icons/si';
+import { SiNetlify, SiVercel } from 'react-icons/si';
 import '../css/Responsive.css';
 
 function Dashboard() {
@@ -16,8 +16,6 @@ function Dashboard() {
     netlify: false,
     vercel: false,
     cloudflare: false,
-    railway: false,
-    render: false,
   });
   const [loading, setLoading] = useState(true);
 
@@ -29,12 +27,10 @@ function Dashboard() {
 
         const tokens = await getUserTokens();
         setConnectedPlatforms({
-          github: !!tokens.githubToken,
-          netlify: !!tokens.netlifyToken,
-          vercel: !!tokens.vercelToken,
-          cloudflare: !!tokens.cloudflareToken,
-          railway: !!tokens.railwayToken,
-          render: !!tokens.renderToken,
+          github: !!tokens.hasGitHubToken,
+          netlify: !!tokens.hasNetlifyToken,
+          vercel: !!tokens.hasVercelToken,
+          cloudflare: !!tokens.hasCloudflareToken,
         });
 
         if (userData?.id) {
@@ -64,8 +60,6 @@ function Dashboard() {
     { name: 'Netlify', icon: SiNetlify, key: 'netlify', color: '#00C7B7', action: handleConnectNetlify },
     { name: 'Vercel', icon: SiVercel, key: 'vercel', color: '#000' },
     { name: 'Cloudflare', icon: FaCloudflare, key: 'cloudflare', color: '#F38020' },
-    { name: 'Railway', icon: SiRailway, key: 'railway', color: '#0B0D0E' },
-    { name: 'Render', icon: SiRender, key: 'render', color: '#46E3B7' },
   ];
 
   if (loading) {
