@@ -52,13 +52,10 @@
 /* Projects Grid */
 .projects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(28rem, 1fr)); /* Wider minimum width */
+  gap: 2rem; /* Increased gap for better spacing */
   width: 100%;
-  margin: 0;
-  padding: 0.25rem 0;
-  max-height: 100%;
-  overflow-y: auto;
+  max-width: 100%;
 }
 
 /* Project cards */
@@ -70,13 +67,8 @@
   display: flex;
   flex-direction: column;
   transition: transform 0.2s, box-shadow 0.2s;
-  height: auto;
-  min-height: 180px;
-  word-break: break-word;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 0.5rem;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .project-card:hover {
@@ -139,46 +131,23 @@
   background-color: rgba(0, 0, 0, 0.7);
 }
 
-/* Modal card box - responsive and contained */
+/* Modal card box - wider + moved slightly upward */
+/* Modal card - BIGGER */
 .modal-card {
-  background: #3a1f6b;
-  padding: 1.25rem;
+  background: #3a1f6b; /* Lighter purple background */
+  padding: 2.5rem;
   border-radius: 1rem;
   width: 95%;
-  max-width: 90vw;
-  max-height: 90vh;
+  max-width: 90vw; /* 90% of viewport width */
+  min-height: 16rem;
   color: #fff;
   display: flex;
-  flex-direction: column;
   border: 1px solid #6c3fb5;
-  margin: 1rem auto;
+  margin: 2rem auto;
+  flex-direction: column;
+  gap: 1.5rem;
   position: relative;
-  overflow: hidden;
   animation: fadeInUp 0.25s ease-out;
-}
-
-/* Modal body with scroll */
-.modal-card .modal-body {
-  padding: 0.5rem 0;
-  overflow-y: auto;
-  flex: 1;
-  margin-right: -0.5rem; /* Compensate for scrollbar */
-  padding-right: 0.5rem; /* Space for scrollbar */
-  max-height: calc(90vh - 120px); /* Account for header and padding */
-}
-
-/* Custom scrollbar for modal */
-.modal-card .modal-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.modal-card .modal-body::-webkit-scrollbar-thumb {
-  background-color: #6c3fb5;
-  border-radius: 3px;
-}
-
-.modal-card .modal-body::-webkit-scrollbar-track {
-  background: transparent;
 }
 
 /* Smooth upward entry animation */

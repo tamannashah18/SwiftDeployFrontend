@@ -51,36 +51,36 @@ const DeploymentModal = ({ show, onHide, project }) => {
   };
 
   const analyzeProject = async () => {
-    if (!project?.repoId) {
+    if (!project.repoId) {
       setError('GitHub repository information not found');
       return;
     }
 
-    try {
-      setLoading(true);
-      const result = await analyzeAndSuggest(project._id);
+    setError('');
+    setLoading(true);
 
+    try {
+      const [owner, repo] = project.repoId.split('/');
+      const branch = project.branch || 'main';
+      const token = tokens['github-pages'];
+
+      const result = await analyzeAndSuggest(owner, repo, branch, token);
+      
       if (result.analysis) {
+        setPlatforms(result.analysis.allSuggestions || []);
+        setRecommendedPlatform(result.analysis.recommendedPlatform?.platform || null);
         setDetectedTech({
           framework: result.analysis.detectedTechnologies?.framework || 'Not detected',
           buildTool: result.analysis.detectedTechnologies?.buildTool || 'Not detected',
           packageManager: result.analysis.detectedTechnologies?.packageManager || 'Not detected',
           technologies: result.analysis.detectedTechnologies?.technologies || []
         });
-
-        const recommended = result.analysis.recommendedPlatform?.platform?.toLowerCase();
-        if (recommended && platforms.some(p => p.platform === recommended)) {
-          setRecommendedPlatform(recommended);
-        } else {
-          setRecommendedPlatform('vercel');
-        }
-
         setStep('select');
+      } else {
+        throw new Error('Invalid response format from server');
       }
     } catch (err) {
-      console.error('Error analyzing project:', err);
-      setError('Using default platforms.');
-      setStep('select');
+      setError(err.message || 'Failed to analyze project');
     } finally {
       setLoading(false);
     }
@@ -142,48 +142,26 @@ const DeploymentModal = ({ show, onHide, project }) => {
     setError('');
 
     try {
-      console.log('Project object:', project);
-      console.log('Selected platform:', selectedPlatform);
-      console.log('Tokens:', tokens);
-
-      if (!project) {
-        throw new Error('Project data is missing');
+      if (!project.repoId) {
+        throw new Error('GitHub repository information not found');
       }
 
-      let owner, repo;
-
-      if (project.repoId) {
-        [owner, repo] = project.repoId.split('/');
-      } else if (project.githubRepoUrl) {
-        const match = project.githubRepoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
-        if (match) {
-          owner = match[1];
-          repo = match[2].replace('.git', '');
-        }
-      }
-
-      if (!owner || !repo) {
-        throw new Error('Cannot extract repository information from project');
-      }
-
+      const [owner, repo] = project.repoId.split('/');
       const deploymentData = {
         projectId: project._id || project.id,
         platform: selectedPlatform,
-        owner: owner.trim(),
-        repo: repo.trim(),
-        repoName: repo.trim(),
+        owner,
+        repo,
         branch: project.branch || 'main',
+        token: tokens[selectedPlatform],
         config: project.config || {}
       };
-
-      console.log('Deployment data:', deploymentData);
 
       await deployToUnifiedPlatform(deploymentData);
 
       onHide();
       window.location.reload();
     } catch (err) {
-      console.error('Deployment error:', err);
       setError(err.message || 'Deployment failed');
     } finally {
       setLoading(false);
@@ -290,132 +268,62 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
             <h5 className="mb-3" style={{ color: '#ffffff' }}>Select Deployment Platform</h5>
 
-            <div className="platforms-grid">
-              {platforms.map((platform) => {
-                  const platformId = platform.platform.toLowerCase();
-                  const config = platformConfig[platformId];
-                  const Icon = config?.icon || FaGithub;
-                  const isRecommended = platform.isRecommended;
+            <div className="row g-3">
+              {platforms.map((platform, index) => {
+                const platformName = platform.platform.toLowerCase();
+                const config = platformConfig[platformName];
+                const Icon = config?.icon || FaGithub;
+                const isRecommended = platform.isRecommended;
 
-                  return (
+                return (
+                  <div key={platform} className="col-md-6">
                     <Card
-                      key={platformId}
-                      className="platform-card"
                       onClick={() => handlePlatformSelect(platform)}
                       style={{
-                        backgroundColor: '#3a1f6b',
+                        backgroundColor: '#2d1b4e',
                         border: isRecommended ? '2px solid #b89dff' : '1px solid #6c3fb5',
                         cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        overflow: 'hidden'
+                        transition: 'all 0.3s ease'
                       }}
+                      className="h-100"
                     >
-                      <Card.Body className="d-flex flex-column h-100">
+                      <Card.Body>
                         <div className="d-flex align-items-center justify-content-between mb-3">
                           <div className="d-flex align-items-center gap-2">
                             <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
-                            <span className="fw-bold" style={{ color: '#ffffff' }}>
-                              {platformId === 'github-pages' ? 'GitHub Pages' : platformId.charAt(0).toUpperCase() + platformId.slice(1)}
-                            </span>
+                            <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
                           </div>
-                          {isRecommended && (
-                            <Badge bg="success" className="d-flex align-items-center gap-1">
-                              <FaCheckCircle /> Recommended
+                          <div className="d-flex align-items-center gap-2 ms-auto">
+                            {isRecommended && (
+                              <Badge bg="success" className="d-flex align-items-center gap-1">
+                                <FaCheckCircle /> Recommended
+                              </Badge>
+                            )}
+                            <Badge bg="dark" style={{ color: '#ffffff' }}>
+                              Score: {platform.score}/100
                             </Badge>
-                          )}
+                          </div>
                         </div>
-                        
-                        <p className="mb-3" style={{ color: '#e0d6ff', flex: 1 }}>
-                          {platform.reason || `Deploy to ${platformId === 'github-pages' ? 'GitHub Pages' : platformId}`}
-                        </p>
-                        
-                        <div className="mt-auto">
-                          <div className="d-flex flex-wrap gap-1 mb-2">
+                        <div className="mt-2">
+                          <p className="mb-2" style={{ color: '#ffffff' }}>{platform.reason}</p>
+                          <div className="d-flex flex-wrap gap-1">
                             {platform.features?.map((feature, i) => (
                               <Badge key={i} bg="info" className="me-1 mb-1" style={{ color: '#ffffff' }}>
                                 {feature}
                               </Badge>
-                            )) || (
-                              <Badge bg="secondary" className="me-1 mb-1">
-                                {platformId === 'github-pages' ? 'Static Sites' : 'Full Stack'}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="d-flex justify-content-between align-items-center">
-                            <small style={{ color: tokens[platformId] ? '#10b981' : '#ff6b6b' }}>
-                              {tokens[platformId] ? 'Connected' : 'Not connected'}
-                            </small>
-                            {platform.score > 0 && (
-                              <Badge bg="dark" style={{ color: '#ffffff' }}>
-                                Score: {platform.score}/100
-                              </Badge>
-                            )}
+                            ))}
                           </div>
                         </div>
+                        <h6 style={{ color: '#ffffff', marginTop: '1rem' }}>{config?.name}</h6>
+                        <small style={{ color: '#ffffff' }}>
+                          {tokens[platformName] ? 'Connected' : 'Not connected'}
+                        </small>
                       </Card.Body>
                     </Card>
-                  );
-                })}
+                  </div>
+                );
+              })}
             </div>
-            <style jsx>{`
-              .platforms-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                gap: 1.25rem;
-                width: 100%;
-                margin: 0;
-                padding: 0.5rem 0;
-              }
-              
-              .platform-card {
-                height: 100%;
-                display: flex;
-                flex-direction: column;
-                transition: transform 0.2s, box-shadow 0.2s;
-                word-break: break-word;
-                overflow: hidden;
-              }
-              
-              .platform-card .card-body {
-                padding: 1.25rem;
-                display: flex;
-                flex-direction: column;
-                height: 100%;
-              }
-              
-              .platform-card .card-text {
-                overflow: hidden;
-                text-overflow: ellipsis;
-                display: -webkit-box;
-                -webkit-line-clamp: 3;
-                -webkit-box-orient: vertical;
-                margin-bottom: 1rem;
-                flex-grow: 1;
-              }
-              
-              .platform-card .features {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-                margin-bottom: 1rem;
-              }
-              
-              .platform-card .badge {
-                white-space: nowrap;
-                text-overflow: ellipsis;
-                overflow: hidden;
-                max-width: 100%;
-              }
-              
-              @media (max-width: 768px) {
-                .platforms-grid {
-                  grid-template-columns: 1fr;
-                }
-              }
-            `}</style>
           </div>
         )}
 
