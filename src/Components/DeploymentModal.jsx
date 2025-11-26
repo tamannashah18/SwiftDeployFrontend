@@ -7,12 +7,7 @@ import { getUserTokens, savePlatformToken, startNetlifyLogin } from '../api/auth
 
 const DeploymentModal = ({ show, onHide, project }) => {
   const [step, setStep] = useState('analyze');
-  const [platforms, setPlatforms] = useState([
-    { platform: 'vercel', name: 'Vercel', icon: SiVercel, color: '#000000', features: ['Serverless', 'Edge Functions', 'Preview Deployments'] },
-    { platform: 'netlify', name: 'Netlify', icon: SiNetlify, color: '#00AD9F', features: ['Serverless', 'Forms', 'Identity'] },
-    { platform: 'github-pages', name: 'GitHub Pages', icon: FaGithub, color: '#181717', features: ['Static Sites', 'Free Hosting', 'GitHub Integration'] },
-    { platform: 'cloudflare', name: 'Cloudflare', icon: SiCloudflare, color: '#F38020', features: ['Edge Network', 'DDoS Protection', 'CDN'] }
-  ]);
+  const [platforms, setPlatforms] = useState([]);
   const [recommendedPlatform, setRecommendedPlatform] = useState(null);
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [tokens, setTokens] = useState({});
@@ -56,36 +51,49 @@ const DeploymentModal = ({ show, onHide, project }) => {
   };
 
   const analyzeProject = async () => {
-    if (!project?.repoId) {
+    if (!project.repoId) {
       setError('GitHub repository information not found');
       return;
     }
 
+    setError('');
+    setLoading(true);
+
     try {
-      setLoading(true);
-      const result = await analyzeAndSuggest(project._id);
+      const [owner, repo] = project.repoId.split('/');
+      const branch = project.branch || 'main';
+      const token = tokens['github-pages'];
+
+      const result = await analyzeAndSuggest(owner, repo, branch, token);
       
       if (result.analysis) {
+        // Only include platforms that are in our platformConfig
+        const supportedPlatforms = (result.analysis.allSuggestions || []).filter(
+          platform => platform.platform.toLowerCase() in platformConfig
+        );
+        
+        setPlatforms(supportedPlatforms);
+        
+        // Only set recommended platform if it's in our supported platforms
+        const recommended = result.analysis.recommendedPlatform?.platform;
+        if (recommended && recommended.toLowerCase() in platformConfig) {
+          setRecommendedPlatform(recommended);
+        } else {
+          setRecommendedPlatform(null);
+        }
+        
         setDetectedTech({
           framework: result.analysis.detectedTechnologies?.framework || 'Not detected',
           buildTool: result.analysis.detectedTechnologies?.buildTool || 'Not detected',
           packageManager: result.analysis.detectedTechnologies?.packageManager || 'Not detected',
           technologies: result.analysis.detectedTechnologies?.technologies || []
         });
-        
-        const recommended = result.analysis.recommendedPlatform?.platform?.toLowerCase();
-        if (recommended && platforms.some(p => p.platform === recommended)) {
-          setRecommendedPlatform(recommended);
-        } else {
-          setRecommendedPlatform('vercel');
-        }
-        
         setStep('select');
+      } else {
+        throw new Error('Invalid response format from server');
       }
     } catch (err) {
-      console.error('Error analyzing project:', err);
-      setError('Using default platforms.');
-      setStep('select');
+      setError(err.message || 'Failed to analyze project');
     } finally {
       setLoading(false);
     }
@@ -142,74 +150,37 @@ const DeploymentModal = ({ show, onHide, project }) => {
     }
   };
 
-  // const handleDeploy = async () => {
-  //   setLoading(true);
-  //   setError('');
+  const handleDeploy = async () => {
+    setLoading(true);
+    setError('');
 
-  //   try {
-  //     if (!project.repoId) {
-  //       throw new Error('GitHub repository information not found');
-  //     }
+    try {
+      if (!project.repoId) {
+        throw new Error('GitHub repository information not found');
+      }
 
-  //     const [owner, repo] = project.repoId.split('/');
-  //     const deploymentData = {
-  //       projectId: project._id || project.id,
-  //       platform: selectedPlatform,
-  //       owner,
-  //       repo,
-  //       branch: project.branch || 'main',
-  //       token: tokens[selectedPlatform],
-  //       config: project.config || {}
-  //     };
+      const [owner, repo] = project.repoId.split('/');
+      const deploymentData = {
+        projectId: project._id || project.id,
+        platform: selectedPlatform,
+        owner,
+        repo,
+        branch: project.branch || 'main',
+        token: tokens[selectedPlatform],
+        config: project.config || {}
+      };
 
-  //     await deployToUnifiedPlatform(deploymentData);
+      await deployToUnifiedPlatform(deploymentData);
 
-  //     onHide();
-  //     window.location.reload();
-  //   } catch (err) {
-  //     setError(err.message || 'Deployment failed');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-const handleDeploy = async () => {
-  setLoading(true);
-  setError('');
-
-  try {
-    if (!project?.repoId) {
-      throw new Error('GitHub repository information not found');
+      onHide();
+      window.location.reload();
+    } catch (err) {
+      setError(err.message || 'Deployment failed');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Parse the repoId to get owner and repo name
-    const [owner, repo] = project.repoId.split('/');
-    if (!owner || !repo) {
-      throw new Error('Invalid repository format. Expected format: owner/repo');
-    }
-
-    const deploymentData = {
-      projectId: project._id || project.id,
-      platform: selectedPlatform,
-      owner: owner.trim(),  // Ensure no whitespace
-      repoName: repo.trim(), // Changed from 'repo' to 'repoName' to match API expectation
-      branch: project.branch || 'main',
-      token: tokens[selectedPlatform],
-      config: project.config || {},
-      // Ensure we're sending both Owner and RepoName in the correct case
-      Owner: owner.trim(),  // Add this line to match API's expected case
-      RepoName: repo.trim() // Add this line to match API's expected case
-    };
-
-    await deployToUnifiedPlatform(deploymentData);
-
-    onHide();
-    window.location.reload();
-  } catch (err) {
-    setError(err.message || 'Deployment failed');
-  } finally {
-    setLoading(false);
-  }
-};
   const handleClose = () => {
     setStep('analyze');
     setSelectedPlatform(null);
@@ -310,11 +281,12 @@ const handleDeploy = async () => {
 
             <h5 className="mb-3" style={{ color: '#ffffff' }}>Select Deployment Platform</h5>
 
-            <div className="platforms-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+            <div className="platforms-grid">
               {platforms.map((platform) => {
                   const platformId = platform.platform.toLowerCase();
-                  const Icon = platform.icon || FaGithub;
-                  const isRecommended = recommendedPlatform === platformId;
+                  const config = platformConfig[platformId];
+                  const Icon = config?.icon || FaGithub;
+                  const isRecommended = platform.isRecommended;
 
                   return (
                     <Card
@@ -335,9 +307,9 @@ const handleDeploy = async () => {
                       <Card.Body className="d-flex flex-column h-100">
                         <div className="d-flex align-items-center justify-content-between mb-3">
                           <div className="d-flex align-items-center gap-2">
-                            <Icon size={24} style={{ color: platform.color || '#ffffff' }} />
+                            <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
                             <span className="fw-bold" style={{ color: '#ffffff' }}>
-                              {platform.name}
+                              {platformId === 'github-pages' ? 'GitHub Pages' : platformId.charAt(0).toUpperCase() + platformId.slice(1)}
                             </span>
                           </div>
                           {isRecommended && (
@@ -354,14 +326,14 @@ const handleDeploy = async () => {
                         <div className="mt-auto">
                           <div className="d-flex flex-wrap gap-1 mb-2">
                             {platform.features?.map((feature, i) => (
-                              <Badge key={i} bg="info" className="me-1 mb-1" style={{ 
-                                backgroundColor: platform.color + '40', 
-                                color: '#ffffff',
-                                border: `1px solid ${platform.color}`
-                              }}>
+                              <Badge key={i} bg="info" className="me-1 mb-1" style={{ color: '#ffffff' }}>
                                 {feature}
                               </Badge>
-                            ))}
+                            )) || (
+                              <Badge bg="secondary" className="me-1 mb-1">
+                                {platformId === 'github-pages' ? 'Static Sites' : 'Full Stack'}
+                              </Badge>
+                            )}
                           </div>
                           <div className="d-flex justify-content-between align-items-center">
                             <small style={{ color: tokens[platformId] ? '#10b981' : '#ff6b6b' }}>
