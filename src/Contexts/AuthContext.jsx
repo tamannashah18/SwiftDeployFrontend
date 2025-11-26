@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     localStorage.removeItem('github_access_token');
     setCurrentUser(null);
-    navigate('/login');
+    navigate('/');
   };
 
   const updateUser = (userData) => {

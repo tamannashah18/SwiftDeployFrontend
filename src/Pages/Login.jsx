@@ -81,10 +81,10 @@ function Login() {
           <button type="submit" className="btn">
             Login
           </button>
-          <div className="message">
-            Don't have an account? <a href="/register">Register</a>
-          </div>
         </form>
+        <div className="message">
+          Don't have an account? <a href="/register">Register</a>
+        </div>
         {error && <div className="message error">{error}</div>}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import NavigationBar from "../Components/NavigationBar";
 
 function Profile() {
   const [user, setUser] = useState(null);
@@ -81,8 +82,10 @@ function Profile() {
   }
 
   return (
-    <div className="page-container">
-      <div className="card">
+    <>
+      <NavigationBar />
+      <div className="page-container">
+        <div className="card">
         {/* <img
           src={user.avatarUrl || "/logo.png"}
           alt="Avatar"
@@ -155,8 +158,9 @@ function Profile() {
             {message}
           </div>
         )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
