@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Spinner, Alert, Nav, Badge } from 'react-bootstrap';
 import { ArrowLeft, Gear } from 'react-bootstrap-icons';
+import { FaRocket } from 'react-icons/fa';
 import { getProjectDetails, deleteProject, regenerateConfig } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
+import DeploymentModal from '../Components/DeploymentModal';
 import '../css/Responsive.css';
 
 const ProjectDetail = () => {
@@ -13,6 +15,7 @@ const ProjectDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState('');
+  const [showDeployModal, setShowDeployModal] = useState(false);
 
   useEffect(() => {
     fetchProjectDetails();
@@ -111,7 +114,14 @@ const ProjectDetail = () => {
             <h1 className="h3 mb-0" style={{ color: '#ffffff' }}>{project.projectName}</h1>
             <p className="mb-0" style={{ color: '#b8a3d9' }}>{project.description}</p>
           </div>
-          <div className="ms-auto">
+          <div className="ms-auto d-flex align-items-center gap-2">
+            <Button
+              onClick={() => setShowDeployModal(true)}
+              style={{ backgroundColor: '#6c3fb5', borderColor: '#6c3fb5' }}
+              className="d-flex align-items-center gap-2"
+            >
+              <FaRocket /> Deploy
+            </Button>
             <Badge bg={getStatusBadge(project.status)} className="fs-6">
               {project.status}
             </Badge>
@@ -277,6 +287,12 @@ const ProjectDetail = () => {
           </Card.Body>
         </Card>
       </Container>
+
+      <DeploymentModal
+        show={showDeployModal}
+        onHide={() => setShowDeployModal(false)}
+        project={project}
+      />
     </div>
   );
 };

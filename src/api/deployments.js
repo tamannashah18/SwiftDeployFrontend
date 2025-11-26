@@ -136,3 +136,26 @@ export const deleteDeployment = async (deploymentId) => {
     throw error.response?.data || error;
   }
 };
+
+export const analyzeAndSuggest = async (owner, repo, branch, token) => {
+  try {
+    const response = await apiClient.post('/unifieddeployment/analyze-and-suggest', {
+      owner,
+      repo,
+      branch,
+      token
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const deployToUnifiedPlatform = async (deploymentData) => {
+  try {
+    const response = await apiClient.post('/unifieddeployment/deploy', deploymentData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};

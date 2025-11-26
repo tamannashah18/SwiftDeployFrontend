@@ -63,4 +63,16 @@ export const getUserTokens = async () => {
   }
 };
 
+export const savePlatformToken = async (platform, token) => {
+  try {
+    const response = await apiClient.post('/auth/save-token', {
+      platform,
+      token
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export { storeJwt, getStoredJwt };

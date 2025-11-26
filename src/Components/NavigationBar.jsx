@@ -24,33 +24,34 @@ export const NavigationBar = () => {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="nav-bg">
-      <div className="margin mt-4">
+    <div className="nav-bg d-flex flex-column align-items-center">
+      <div className="d-flex flex-column align-items-center w-100 h-100 py-3">
         <img
           src="/logo.ico"
           alt="Logo"
-          className="logo"
+          className="logo mb-4"
           onClick={() => navigate('/dashboard')}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', height: '3rem', width: 'auto', objectFit: 'contain' }}
         />
-        <div className="container">
-          <div className="top-icons">
+
+        <div className="d-flex flex-column justify-content-between align-items-center flex-grow-1 w-100">
+          <div className="d-flex flex-column align-items-center gap-3">
             <div
-              className={`iconify-icon mb-4 ${isActive('/dashboard') ? 'active' : ''}`}
+              className={`iconify-icon ${isActive('/dashboard') ? 'active' : ''}`}
               onClick={() => navigate('/dashboard')}
               title="Dashboard"
             >
               <MdOutlineDashboard />
             </div>
             <div
-              className={`iconify-icon mb-4 ${isActive('/projects') ? 'active' : ''}`}
+              className={`iconify-icon ${isActive('/projects') ? 'active' : ''}`}
               onClick={() => navigate('/projects')}
               title="Projects"
             >
               <PiGitForkLight />
             </div>
             <div
-              className={`iconify-icon terminal-icon mb-4 ${isActive('/deployments') ? 'active' : ''}`}
+              className={`iconify-icon terminal-icon ${isActive('/deployments') ? 'active' : ''}`}
               onClick={() => navigate('/deployments')}
               title="Deployments"
             >
@@ -64,7 +65,8 @@ export const NavigationBar = () => {
               <CiSettings />
             </div>
           </div>
-          <div className="bottom-icons">
+
+          <div className="d-flex flex-column align-items-center gap-3 mb-3">
             <div
               className="iconify-icon"
               onClick={() => window.open('https://github.com/yourusername/swiftdeploy/issues', '_blank')}
@@ -73,7 +75,7 @@ export const NavigationBar = () => {
               <GoQuestion />
             </div>
             <div
-              className="iconify-icon mb-4 logout-icon"
+              className="iconify-icon logout-icon"
               onClick={handleLogout}
               title="Logout"
             >
