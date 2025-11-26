@@ -108,6 +108,10 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
   const handleOAuthLogin = () => {
     if (selectedPlatform === 'netlify') {
+      const projectId = project._id || project.id;
+      if (projectId) {
+        localStorage.setItem('netlify_oauth_return_project', projectId);
+      }
       startNetlifyLogin();
     }
   };
