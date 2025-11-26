@@ -69,9 +69,15 @@ export const getUserTokens = async () => {
 
 export const savePlatformToken = async (platform, token) => {
   try {
-    const response = await apiClient.post('/auth/save-token', {
-      platform,
-      token
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user?.id) {
+      throw new Error('User not found. Please log in again.');
+    }
+
+    const response = await apiClient.post(`/user/${user.id}/tokens/${platform}`, token, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     return response.data;
   } catch (error) {
