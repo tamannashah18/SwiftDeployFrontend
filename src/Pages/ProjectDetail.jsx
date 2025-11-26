@@ -147,32 +147,75 @@ const ProjectDetail = () => {
         <div className="project-tab-content">
           {activeTab === 'overview' && (
             <div className="project-overview">
-              <Card className="info-card">
+              <Card className="info-card-enhanced">
                 <Card.Body>
-                  <h5>Project Information</h5>
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <div className="info-label">Platform</div>
-                      <div className="info-value">
-                        {project.platform === 'netlify' ? 'Netlify' : project.platform || 'N/A'}
+                  <div className="card-header-enhanced">
+                    <div className="header-icon-wrapper">
+                      <FaRocket className="header-icon" />
+                    </div>
+                    <h5>Project Information</h5>
+                  </div>
+                  <div className="info-grid-enhanced">
+                    <div className="info-item-enhanced">
+                      <div className="info-icon-label">
+                        <FaExternalLinkAlt className="info-icon" />
+                        <span className="info-label-enhanced">Platform</span>
+                      </div>
+                      <div className="info-value-enhanced">
+                        {project.platform === 'netlify' ? 'Netlify' :
+                         project.platform === 'vercel' ? 'Vercel' :
+                         project.platform === 'cloudflare' ? 'Cloudflare' :
+                         project.platform || 'N/A'}
                       </div>
                     </div>
-                    <div className="info-item">
-                      <div className="info-label">Status</div>
+                    <div className="info-item-enhanced">
+                      <div className="info-icon-label">
+                        <div className="status-indicator" style={{
+                          backgroundColor: project.status === 'Completed' ? '#10b981' :
+                                         project.status === 'Failed' ? '#ef4444' : '#f59e0b'
+                        }}></div>
+                        <span className="info-label-enhanced">Status</span>
+                      </div>
                       <div>
-                        <Badge bg={getStatusBadge(project.status)}>{project.status}</Badge>
+                        <Badge bg={getStatusBadge(project.status)} className="status-badge-enhanced">
+                          {project.status}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="info-item">
-                      <div className="info-label">Created</div>
-                      <div className="info-value">
-                        {project.createdAt ? new Date(project.createdAt).toLocaleDateString() : 'N/A'}
+                    <div className="info-item-enhanced">
+                      <div className="info-icon-label">
+                        <svg className="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6" strokeWidth="2"/>
+                          <line x1="8" y1="2" x2="8" y2="6" strokeWidth="2"/>
+                          <line x1="3" y1="10" x2="21" y2="10" strokeWidth="2"/>
+                        </svg>
+                        <span className="info-label-enhanced">Created</span>
+                      </div>
+                      <div className="info-value-enhanced">
+                        {project.createdAt ? new Date(project.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }) : 'N/A'}
                       </div>
                     </div>
-                    <div className="info-item">
-                      <div className="info-label">Last Updated</div>
-                      <div className="info-value">
-                        {project.updatedAt ? new Date(project.updatedAt).toLocaleString() : 'N/A'}
+                    <div className="info-item-enhanced">
+                      <div className="info-icon-label">
+                        <svg className="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                          <polyline points="12 6 12 12 16 14" strokeWidth="2"/>
+                        </svg>
+                        <span className="info-label-enhanced">Last Updated</span>
+                      </div>
+                      <div className="info-value-enhanced">
+                        {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) : 'N/A'}
                       </div>
                     </div>
                   </div>
@@ -254,25 +297,65 @@ const ProjectDetail = () => {
 
           {activeTab === 'configuration' && (
             <div className="configuration-info">
-              <Card>
+              <Card className="config-card-enhanced">
                 <Card.Body>
-                  <div className="d-flex justify-content-between align-items-center mb-3">
-                    <h5 className="mb-0">Project Configuration</h5>
-                    <Button 
-                      variant="outline-primary" 
+                  <div className="config-header-enhanced">
+                    <div className="config-header-left">
+                      <div className="config-icon-wrapper">
+                        <svg className="config-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <circle cx="12" cy="12" r="3" strokeWidth="2"/>
+                          <path d="M12 1v6m0 6v6M1 12h6m6 0h6" strokeWidth="2"/>
+                          <path d="M4.22 4.22l4.24 4.24m7.08 0l4.24-4.24m0 15.56l-4.24-4.24m-7.08 0l-4.24 4.24" strokeWidth="2"/>
+                        </svg>
+                        <h5 className="mb-0">Project Configuration</h5>
+                      </div>
+                      <p className="config-subtitle">Build and deployment settings</p>
+                    </div>
+                    <Button
+                      className="regenerate-button"
                       size="sm"
                       onClick={handleRegenerateConfig}
                     >
-                      Regenerate Configuration
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="me-1">
+                        <polyline points="23 4 23 10 17 10" strokeWidth="2"/>
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" strokeWidth="2"/>
+                      </svg>
+                      Regenerate
                     </Button>
                   </div>
-                  
+
                   {project.config ? (
-                    <pre className="config-json">
-                      <code>{JSON.stringify(project.config, null, 2)}</code>
-                    </pre>
+                    <div className="config-content-enhanced">
+                      <div className="config-grid">
+                        {Object.entries(project.config).map(([key, value]) => (
+                          <div key={key} className="config-item-enhanced">
+                            <div className="config-key">
+                              <code>{key}</code>
+                            </div>
+                            <div className="config-value">
+                              <code>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</code>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="config-raw">
+                        <div className="config-raw-header">
+                          <span>Raw JSON</span>
+                        </div>
+                        <pre className="config-json-enhanced">
+                          <code>{JSON.stringify(project.config, null, 2)}</code>
+                        </pre>
+                      </div>
+                    </div>
                   ) : (
-                    <Alert variant="info">No configuration available for this project.</Alert>
+                    <div className="config-empty">
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" opacity="0.3">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                        <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2"/>
+                      </svg>
+                      <p>No configuration available for this project.</p>
+                    </div>
                   )}
                 </Card.Body>
               </Card>
