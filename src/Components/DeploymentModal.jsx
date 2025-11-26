@@ -142,26 +142,48 @@ const DeploymentModal = ({ show, onHide, project }) => {
     setError('');
 
     try {
-      if (!project.repoId) {
-        throw new Error('GitHub repository information not found');
+      console.log('Project object:', project);
+      console.log('Selected platform:', selectedPlatform);
+      console.log('Tokens:', tokens);
+
+      if (!project) {
+        throw new Error('Project data is missing');
       }
 
-      const [owner, repo] = project.repoId.split('/');
+      let owner, repo;
+
+      if (project.repoId) {
+        [owner, repo] = project.repoId.split('/');
+      } else if (project.githubRepoUrl) {
+        const match = project.githubRepoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+        if (match) {
+          owner = match[1];
+          repo = match[2].replace('.git', '');
+        }
+      }
+
+      if (!owner || !repo) {
+        throw new Error('Cannot extract repository information from project');
+      }
+
       const deploymentData = {
         projectId: project._id || project.id,
         platform: selectedPlatform,
-        owner,
-        repo,
+        owner: owner.trim(),
+        repo: repo.trim(),
+        repoName: repo.trim(),
         branch: project.branch || 'main',
-        token: tokens[selectedPlatform],
         config: project.config || {}
       };
+
+      console.log('Deployment data:', deploymentData);
 
       await deployToUnifiedPlatform(deploymentData);
 
       onHide();
       window.location.reload();
     } catch (err) {
+      console.error('Deployment error:', err);
       setError(err.message || 'Deployment failed');
     } finally {
       setLoading(false);
