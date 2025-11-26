@@ -324,28 +324,39 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
         {step === 'confirm' && (
           <div className="py-4">
-            <h5 className="mb-4" style={{ color: '#ffffff' }}>Confirm Deployment</h5>
-            <Card style={{ backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}>
-              <Card.Body>
+            <h5 className="mb-4 text-center" style={{ color: '#ffffff' }}>Confirm Deployment</h5>
+            <Card style={{
+              backgroundColor: '#2d1b4e',
+              border: '1px solid #6c3fb5',
+              maxWidth: '500px',
+              margin: '0 auto'
+            }}>
+              <Card.Body className="p-4">
                 <div className="mb-3">
                   <strong style={{ color: '#b89dff' }}>Project:</strong>
-                  <div style={{ color: '#ffffff' }}>{project.projectName}</div>
+                  <div style={{ color: '#ffffff', marginTop: '4px' }}>{project.projectName}</div>
                 </div>
                 <div className="mb-3">
                   <strong style={{ color: '#b89dff' }}>Platform:</strong>
-                  <div style={{ color: '#ffffff' }}>{platformConfig[selectedPlatform]?.name}</div>
+                  <div style={{ color: '#ffffff', marginTop: '4px' }}>{platformConfig[selectedPlatform]?.name}</div>
                 </div>
                 <div className="mb-3">
                   <strong style={{ color: '#b89dff' }}>Repository:</strong>
-                  <div style={{ color: '#ffffff' }}>{project.githubRepoUrl}</div>
+                  <div style={{ color: '#ffffff', marginTop: '4px', wordBreak: 'break-all' }}>{project.githubRepoUrl}</div>
                 </div>
               </Card.Body>
             </Card>
-            <div className="d-flex gap-2 mt-4">
+            <div className="d-flex gap-3 mt-4 justify-content-center">
               <Button
                 onClick={handleDeploy}
                 disabled={loading}
-                style={{ backgroundColor: '#6c3fb5', borderColor: '#6c3fb5', flex: 1 }}
+                size="lg"
+                style={{
+                  backgroundColor: '#6c3fb5',
+                  borderColor: '#6c3fb5',
+                  minWidth: '150px',
+                  fontWeight: '500'
+                }}
               >
                 {loading ? <Spinner animation="border" size="sm" /> : 'Deploy Now'}
               </Button>
@@ -353,6 +364,11 @@ const DeploymentModal = ({ show, onHide, project }) => {
                 variant="outline-light"
                 onClick={() => setStep('select')}
                 disabled={loading}
+                size="lg"
+                style={{
+                  minWidth: '150px',
+                  fontWeight: '500'
+                }}
               >
                 Back
               </Button>
