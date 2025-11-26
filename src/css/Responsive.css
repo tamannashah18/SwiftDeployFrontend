@@ -1,53 +1,57 @@
 @media (max-width: 768px) {
-  .min-vh-100[style*="marginLeft"] {
-    margin-left: 0 !important;
-  }
-
   .nav-bg {
     width: 100%;
     height: auto;
-    position: relative;
-    flex-direction: row;
-    padding: 0.5rem;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    left: 0;
+    border-right: none;
+    border-top: 1px solid #6c3fb5;
+    padding: 0.75rem 0.5rem;
+    z-index: 1000;
   }
 
-  .margin {
-    flex-direction: row;
-    gap: 0.5rem;
+  .nav-bg > div {
+    flex-direction: row !important;
+    padding: 0 !important;
+    width: 100% !important;
   }
 
-  .container {
-    flex-direction: row;
+  .nav-bg > div > div {
+    flex-direction: row !important;
+    width: 100% !important;
+    justify-content: space-around !important;
+  }
+
+  .logo {
+    display: none;
   }
 
   .top-icons,
   .bottom-icons {
-    flex-direction: row;
-    gap: 0.5rem;
-  }
-
-  .logo {
-    height: 2.5rem;
-    width: 3rem;
+    flex-direction: row !important;
+    gap: 0.5rem !important;
   }
 
   .iconify-icon {
     font-size: 1.25rem;
-    padding: 0.4rem;
+    padding: 0.5rem;
   }
 
   .iconify-icon.terminal-icon {
     font-size: 1rem;
   }
 
-  .container-fluid,
-  .container {
+  .container-fluid[style*="marginLeft"] {
+    margin-left: 0 !important;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
+    padding-bottom: 5rem !important;
   }
 
   .card-body {
-    padding: 1rem !important;
+    padding: 1.5rem !important;
   }
 
   .display-5 {
@@ -57,28 +61,40 @@
   .h4 {
     font-size: 1.25rem !important;
   }
+
+  .row.mb-4.align-items-center {
+    flex-wrap: wrap;
+  }
+
+  .row.mb-4.align-items-center .col {
+    flex: 1 1 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .row.mb-4.align-items-center .col-auto {
+    flex: 0 0 auto;
+    width: auto;
+  }
 }
 
 @media (min-width: 769px) and (max-width: 1024px) {
-  .container-fluid {
-    max-width: 95% !important;
-  }
-
-  .col-lg-4 {
-    flex: 0 0 auto;
-    width: 50%;
+  .container-fluid[style*="marginLeft"] {
+    margin-left: 5rem !important;
+    padding-right: 1.5rem !important;
   }
 }
 
 @media (min-width: 1025px) and (max-width: 1440px) {
-  .container-fluid {
-    max-width: 1200px !important;
+  .container-fluid[style*="marginLeft"] {
+    margin-left: 5rem !important;
+    padding-right: 2rem !important;
   }
 }
 
 @media (min-width: 1441px) {
-  .container-fluid {
-    max-width: 1400px !important;
+  .container-fluid[style*="marginLeft"] {
+    margin-left: 5rem !important;
+    padding-right: 2rem !important;
   }
 }
 

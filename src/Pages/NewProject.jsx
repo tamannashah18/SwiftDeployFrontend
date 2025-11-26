@@ -95,9 +95,9 @@ function NewProject() {
     <div className="min-vh-100" style={{ backgroundColor: '#1a0033' }}>
       <NavigationBar />
 
-      <div className="container py-5">
+      <div className="container-fluid py-5" style={{ marginLeft: '5rem', paddingRight: '2rem' }}>
         <div className="row justify-content-center">
-          <div className="col-md-8 col-lg-6">
+          <div className="col-sm-12 col-md-10 col-lg-8 col-xl-6">
             <div className="card shadow-lg" style={{ backgroundColor: '#2d1b4e', border: 'none' }}>
               <div className="card-body p-5">
                 <h2 className="text-center mb-4" style={{ color: '#ffffff' }}>

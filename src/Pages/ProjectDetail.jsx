@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Spinner, Alert, Nav, Badge } from 'react-bootstrap';
-import { ArrowLeft, Gear } from 'react-bootstrap-icons';
+import { ArrowLeft } from 'react-bootstrap-icons';
 import { FaRocket } from 'react-icons/fa';
 import { getProjectDetails, deleteProject, regenerateConfig } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
@@ -19,6 +19,7 @@ const ProjectDetail = () => {
 
   useEffect(() => {
     fetchProjectDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchProjectDetails = async () => {
@@ -98,31 +99,35 @@ const ProjectDetail = () => {
   }
 
   return (
-    <div className="min-vh-100" style={{ backgroundColor: '#1a0033', marginLeft: '5rem' }}>
+    <div className="min-vh-100" style={{ backgroundColor: '#1a0033' }}>
       <NavigationBar />
-      <Container fluid className="py-4 px-4" style={{ maxWidth: '1400px' }}>
-        <div className="d-flex align-items-center mb-4">
-          <Button
-            variant="outline-light"
-            size="sm"
-            className="me-3"
-            onClick={() => navigate('/projects')}
-          >
-            <ArrowLeft /> Back
-          </Button>
-          <div>
-            <h1 className="h3 mb-0" style={{ color: '#ffffff' }}>{project.projectName}</h1>
-            <p className="mb-0" style={{ color: '#b8a3d9' }}>{project.description}</p>
+      <Container fluid className="py-4" style={{ marginLeft: '5rem', paddingRight: '2rem' }}>
+        <div className="row mb-4 align-items-center">
+          <div className="col-auto">
+            <Button
+              variant="outline-light"
+              size="sm"
+              onClick={() => navigate('/projects')}
+              className="d-flex align-items-center gap-1"
+              style={{ fontSize: '0.875rem', padding: '0.375rem 0.75rem' }}
+            >
+              <ArrowLeft size={16} /> Back
+            </Button>
           </div>
-          <div className="ms-auto d-flex align-items-center gap-2">
+          <div className="col">
+            <h1 className="h4 mb-1" style={{ color: '#ffffff' }}>{project.projectName}</h1>
+            <p className="mb-0 small" style={{ color: '#b8a3d9' }}>{project.description}</p>
+          </div>
+          <div className="col-auto d-flex align-items-center gap-2">
             <Button
               onClick={() => setShowDeployModal(true)}
-              style={{ backgroundColor: '#6c3fb5', borderColor: '#6c3fb5' }}
+              style={{ backgroundColor: '#6c3fb5', borderColor: '#6c3fb5', fontSize: '0.875rem' }}
               className="d-flex align-items-center gap-2"
+              size="sm"
             >
-              <FaRocket /> Deploy
+              <FaRocket size={14} /> Deploy
             </Button>
-            <Badge bg={getStatusBadge(project.status)} className="fs-6">
+            <Badge bg={getStatusBadge(project.status)} style={{ fontSize: '0.875rem', padding: '0.5rem 0.75rem' }}>
               {project.status}
             </Badge>
           </div>
@@ -167,19 +172,19 @@ const ProjectDetail = () => {
                 <div>
                   <h5 className="mb-4" style={{ color: '#ffffff' }}>Project Information</h5>
                   <Row>
-                    <Col md={6} className="mb-3">
+                    <Col sm={12} md={6} lg={6} className="mb-3">
                       <strong style={{ color: '#b89dff' }}>Platform:</strong>
                       <div className="text-capitalize" style={{ color: '#b8a3d9' }}>{project.platform}</div>
                     </Col>
-                    <Col md={6} className="mb-3">
+                    <Col sm={12} md={6} lg={6} className="mb-3">
                       <strong style={{ color: '#b89dff' }}>Status:</strong>
                       <div style={{ color: '#b8a3d9' }}>{project.statusMessage || project.status}</div>
                     </Col>
-                    <Col md={6} className="mb-3">
+                    <Col sm={12} md={6} lg={6} className="mb-3">
                       <strong style={{ color: '#b89dff' }}>Created:</strong>
                       <div style={{ color: '#b8a3d9' }}>{new Date(project.createdAt).toLocaleString()}</div>
                     </Col>
-                    <Col md={6} className="mb-3">
+                    <Col sm={12} md={6} lg={6} className="mb-3">
                       <strong style={{ color: '#b89dff' }}>Progress:</strong>
                       <div className="progress mt-2">
                         <div

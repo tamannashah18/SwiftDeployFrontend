@@ -14,7 +14,6 @@ const DeploymentModal = ({ show, onHide, project }) => {
   const [tokenInput, setTokenInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [analyzing, setAnalyzing] = useState(false);
 
   const platformConfig = {
     netlify: { name: 'Netlify', icon: SiNetlify, color: '#00C7B7', requiresOAuth: true },
@@ -28,6 +27,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
       fetchTokens();
       analyzeProject();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show]);
 
   const fetchTokens = async () => {
@@ -50,7 +50,6 @@ const DeploymentModal = ({ show, onHide, project }) => {
       return;
     }
 
-    setAnalyzing(true);
     setError('');
 
     try {
@@ -68,7 +67,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
     } catch (err) {
       setError(err.message || 'Failed to analyze project');
     } finally {
-      setAnalyzing(false);
+      setLoading(false);
     }
   };
 

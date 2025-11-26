@@ -82,10 +82,10 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-vh-100" style={{ backgroundColor: '#1a0033', marginLeft: '5rem' }}>
+    <div className="min-vh-100" style={{ backgroundColor: '#1a0033' }}>
       <NavigationBar />
 
-      <div className="container-fluid py-5 px-4" style={{ maxWidth: '1400px' }}>
+      <div className="container-fluid py-4" style={{ marginLeft: '5rem', paddingRight: '2rem' }}>
         <div className="row mb-5">
           <div className="col-12">
             <h1 className="display-5 fw-bold mb-2" style={{ color: '#ffffff' }}>Welcome back, {user?.name || 'Developer'}</h1>
@@ -98,8 +98,8 @@ function Dashboard() {
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h2 className="h4 mb-0" style={{ color: '#ffffff' }}>Quick Actions</h2>
             </div>
-            <div className="row g-3">
-              <div className="col-md-6 col-lg-4">
+            <div className="row g-4">
+              <div className="col-sm-12 col-md-6 col-xl-4">
                 <div
                   className="card border-0 shadow-sm h-100 cursor-pointer"
                   onClick={() => navigate('/new-project')}
@@ -114,7 +114,7 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
-              <div className="col-md-6 col-lg-4">
+              <div className="col-sm-12 col-md-6 col-xl-4">
                 <div
                   className="card border-0 shadow-sm h-100 cursor-pointer"
                   onClick={() => navigate('/projects')}
@@ -129,7 +129,7 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
-              <div className="col-md-6 col-lg-4">
+              <div className="col-sm-12 col-md-6 col-xl-4">
                 <div
                   className="card border-0 shadow-sm h-100 cursor-pointer"
                   onClick={() => navigate('/deployments')}
@@ -158,7 +158,7 @@ function Dashboard() {
             </div>
             <div className="row g-4">
               {platformCards.map((platform) => (
-                <div key={platform.key} className="col-md-6 col-lg-4">
+                <div key={platform.key} className="col-sm-12 col-md-6 col-xl-4">
                   <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}>
                     <div className="card-body">
                       <div className="d-flex align-items-center justify-content-between mb-3">

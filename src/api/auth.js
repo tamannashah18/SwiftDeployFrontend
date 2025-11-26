@@ -56,7 +56,11 @@ export const startNetlifyLogin = () => {
 
 export const getUserTokens = async () => {
   try {
-    const response = await apiClient.get('/auth/tokens');
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user?.id) {
+      throw new Error('User not found');
+    }
+    const response = await apiClient.get(`/users/${user.id}/tokens`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
