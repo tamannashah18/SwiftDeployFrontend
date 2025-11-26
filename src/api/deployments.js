@@ -156,12 +156,14 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     const user = JSON.parse(localStorage.getItem('user'));
     const githubToken = localStorage.getItem('github_access_token');
 
+    const repoName = deploymentData.repoName || deploymentData.repo;
+
     const payload = {
       userId: user.id,
       projectName: deploymentData.projectId || 'Deployed Project',
       description: deploymentData.description || 'Deployed via SwiftDeploy',
       platform: deploymentData.platform,
-      gitHubRepo: `${deploymentData.owner}/${deploymentData.repo}`,
+      gitHubRepo: `${deploymentData.owner}/${repoName}`,
       branch: deploymentData.branch || 'main',
       gitHubToken: githubToken,
       config: deploymentData.config || {}
