@@ -1,10 +1,13 @@
+// Bootstrap CSS
 import 'bootstrap/dist/css/bootstrap.min.css';
+// Bootstrap Bundle JS (includes Popper)
+import 'bootstrap/dist/js/bootstrap.bundle.min';
+// Custom CSS
 import './App.css';
 import { Routes, Route } from 'react-router-dom';
 import NotFound from './Pages/NotFound';
 import  Logs from './Pages/Logs';
 import {NavigationBar} from './Components/NavigationBar';
-import Footer from './Components/Footer';
 import Header from './Components/Header';
 import Landing from './Pages/Landing';
 import Profile from './Pages/Profile';
@@ -26,11 +29,11 @@ function App() {
   return <AuthCallback navigate={navigate} />;
 };
   return (
-    <div className="App">
-      <Routes>
+    <div className="App d-flex flex-column min-vh-100">
+      <main className="flex-grow-1">
+        <Routes>
           <Route path="/" element={<NavigationBar />} />
           <Route path="/*" element={<NotFound />} />
-          <Route path="/footer" element={<Footer />} />
           <Route path="/header" element={<Header />} />
           <Route path="/landing" element={<Landing />} />
           <Route path="/auth-callback" element={<AuthCallbackWrapper />} />
@@ -47,7 +50,8 @@ function App() {
           <Route path="/login" element={<Login />} />
 
 
-      </Routes>
+        </Routes>
+      </main>
     </div>
   );
 }

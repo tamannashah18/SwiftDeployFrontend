@@ -39,7 +39,7 @@ export const login = async (credentials) => {
 
 export const getProfile = async () => {
   try {
-    const response = await apiClient.get('/auth/profile');
+    const response = await apiClient.get('/users/profile');
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
