@@ -10,10 +10,22 @@ function Profile() {
     name: "",
     email: ""
   });
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [platformTokens, setPlatformTokens] = useState({
+    github: "",
+    vercel: "",
+    netlify: "",
+    render: ""
+  });
   const [editMode, setEditMode] = useState(false);
+  const [passwordMode, setPasswordMode] = useState(false);
+  const [tokenMode, setTokenMode] = useState(false);
   const [message, setMessage] = useState("");
 
-  // Load token and user from localStorage on mount
   useEffect(() => {
     const storedToken = localStorage.getItem("token") || localStorage.getItem("jwtToken");
     const storedUser = localStorage.getItem("user");
@@ -26,11 +38,32 @@ function Profile() {
         name: parsedUser.name || "",
         email: parsedUser.email || ""
       });
+
+      setPlatformTokens({
+        github: localStorage.getItem("github_access_token") || "",
+        vercel: localStorage.getItem("vercel_token") || "",
+        netlify: localStorage.getItem("netlify_token") || "",
+        render: localStorage.getItem("render_token") || ""
+      });
     }
   }, []);
 
   const handleChange = (e) => {
     setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handlePasswordChange = (e) => {
+    setPasswordData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value
+    }));
+  };
+
+  const handleTokenChange = (e) => {
+    setPlatformTokens((prev) => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
@@ -60,7 +93,6 @@ function Profile() {
         }
       );
 
-      // Update local state and localStorage
       const updatedUser = {
         ...user,
         username: formData.username,
@@ -70,10 +102,78 @@ function Profile() {
       setUser(updatedUser);
       localStorage.setItem("user", JSON.stringify(updatedUser));
 
+      if (response.data.token) {
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("jwtToken", response.data.token);
+        setToken(response.data.token);
+      }
+
       setMessage("Profile updated successfully");
       setEditMode(false);
     } catch (err) {
       setMessage(err.response?.data?.message || "Failed to update profile");
+    }
+  };
+
+  const handlePasswordReset = async (e) => {
+    e.preventDefault();
+    setMessage("");
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setMessage("New passwords do not match");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setMessage("New password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      await axios.put(
+        `http://localhost:5280/api/user/${user.id}/password`,
+        {
+          CurrentPassword: passwordData.currentPassword,
+          NewPassword: passwordData.newPassword
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      setMessage("Password updated successfully");
+      setPasswordMode(false);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: ""
+      });
+    } catch (err) {
+      setMessage(err.response?.data?.message || "Failed to update password");
+    }
+  };
+
+  const handleTokenUpdate = async (e) => {
+    e.preventDefault();
+    setMessage("");
+
+    try {
+      Object.keys(platformTokens).forEach((platform) => {
+        if (platformTokens[platform]) {
+          localStorage.setItem(`${platform}_token`, platformTokens[platform]);
+          if (platform === "github") {
+            localStorage.setItem("github_access_token", platformTokens[platform]);
+          }
+        }
+      });
+
+      setMessage("Platform tokens updated successfully");
+      setTokenMode(false);
+    } catch (err) {
+      setMessage("Failed to update platform tokens");
     }
   };
 
@@ -133,6 +233,91 @@ function Profile() {
               Cancel
             </button>
           </form>
+        ) : passwordMode ? (
+          <form onSubmit={handlePasswordReset}>
+            <h3 style={{ marginBottom: "20px" }}>Reset Password</h3>
+            <input
+              type="password"
+              name="currentPassword"
+              value={passwordData.currentPassword}
+              onChange={handlePasswordChange}
+              placeholder="Current Password"
+              minLength={6}
+              required
+            />
+            <input
+              type="password"
+              name="newPassword"
+              value={passwordData.newPassword}
+              onChange={handlePasswordChange}
+              placeholder="New Password"
+              minLength={6}
+              required
+            />
+            <input
+              type="password"
+              name="confirmPassword"
+              value={passwordData.confirmPassword}
+              onChange={handlePasswordChange}
+              placeholder="Confirm New Password"
+              minLength={6}
+              required
+            />
+            <button type="submit" className="btn">
+              Update Password
+            </button>
+            <button
+              type="button"
+              onClick={() => setPasswordMode(false)}
+              className="btn"
+              style={{ marginTop: "10px", background: "#ccc", color: "#000" }}
+            >
+              Cancel
+            </button>
+          </form>
+        ) : tokenMode ? (
+          <form onSubmit={handleTokenUpdate}>
+            <h3 style={{ marginBottom: "20px" }}>Platform Tokens</h3>
+            <input
+              type="text"
+              name="github"
+              value={platformTokens.github}
+              onChange={handleTokenChange}
+              placeholder="GitHub Token"
+            />
+            <input
+              type="text"
+              name="vercel"
+              value={platformTokens.vercel}
+              onChange={handleTokenChange}
+              placeholder="Vercel Token"
+            />
+            <input
+              type="text"
+              name="netlify"
+              value={platformTokens.netlify}
+              onChange={handleTokenChange}
+              placeholder="Netlify Token"
+            />
+            <input
+              type="text"
+              name="render"
+              value={platformTokens.render}
+              onChange={handleTokenChange}
+              placeholder="Render Token"
+            />
+            <button type="submit" className="btn">
+              Save Tokens
+            </button>
+            <button
+              type="button"
+              onClick={() => setTokenMode(false)}
+              className="btn"
+              style={{ marginTop: "10px", background: "#ccc", color: "#000" }}
+            >
+              Cancel
+            </button>
+          </form>
         ) : (
           <div style={{ width: "100%", textAlign: "left" }}>
             <p>
@@ -144,9 +329,17 @@ function Profile() {
             <p>
               <strong>Email:</strong> {user.email}
             </p>
-            <button onClick={() => setEditMode(true)} className="btn">
-              Edit Profile
-            </button>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "20px" }}>
+              <button onClick={() => setEditMode(true)} className="btn">
+                Edit Profile
+              </button>
+              <button onClick={() => setPasswordMode(true)} className="btn">
+                Reset Password
+              </button>
+              <button onClick={() => setTokenMode(true)} className="btn">
+                Manage Tokens
+              </button>
+            </div>
           </div>
         )}
         {message && (
