@@ -288,21 +288,21 @@ const DeploymentModal = ({ show, onHide, project }) => {
                       className="h-100"
                     >
                       <Card.Body>
-                        <div className="d-flex align-items-center justify-content-between mb-3">
-                          <div className="d-flex align-items-center gap-2">
-                            <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
-                            <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
-                          </div>
-                          <div className="d-flex align-items-center gap-2 ms-auto">
-                            {isRecommended && (
-                              <Badge bg="success" className="d-flex align-items-center gap-1">
-                                <FaCheckCircle /> Recommended
-                              </Badge>
-                            )}
+                        <div className="mb-3">
+                          <div className="d-flex align-items-center justify-content-between">
+                            <div className="d-flex align-items-center gap-2">
+                              <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
+                              <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
+                            </div>
                             <Badge bg="dark" style={{ color: '#ffffff' }}>
                               Score: {platform.score}/100
                             </Badge>
                           </div>
+                          {isRecommended && (
+                            <Badge bg="success" className="d-flex align-items-center gap-1 mt-2" style={{ width: 'fit-content' }}>
+                              <FaCheckCircle /> Recommended
+                            </Badge>
+                          )}
                         </div>
                         <div className="mt-2">
                           <p className="mb-2" style={{ color: '#ffffff' }}>{platform.reason}</p>
