@@ -4,6 +4,7 @@ import { SiNetlify, SiVercel, SiCloudflare } from 'react-icons/si';
 import { FaGithub, FaCheckCircle } from 'react-icons/fa';
 import { analyzeAndSuggest, deployToUnifiedPlatform } from '../api/deployments';
 import { getUserTokens, savePlatformToken, startNetlifyLogin } from '../api/auth';
+import ConfigurationForm from './ConfigurationForm';
 
 const DeploymentModal = ({ show, onHide, project }) => {
   const [step, setStep] = useState('analyze');
@@ -14,6 +15,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
   const [tokenInput, setTokenInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [deploymentConfig, setDeploymentConfig] = useState(null);
   const [detectedTech, setDetectedTech] = useState({
     framework: '',
     buildTool: '',
@@ -103,7 +105,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
       }
     }
 
-    setStep('confirm');
+    setStep('config');
   };
 
   const handleOAuthLogin = () => {
@@ -129,12 +131,17 @@ const DeploymentModal = ({ show, onHide, project }) => {
       await savePlatformToken(selectedPlatform, tokenInput);
       setTokens({ ...tokens, [selectedPlatform]: tokenInput });
       setTokenInput('');
-      setStep('confirm');
+      setStep('config');
     } catch (err) {
       setError(err.message || 'Failed to save token');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfigSubmit = (config) => {
+    setDeploymentConfig(config);
+    setStep('confirm');
   };
 
   const handleDeploy = async () => {
@@ -154,7 +161,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
         repo,
         branch: project.branch || 'main',
         token: tokens[selectedPlatform],
-        config: project.config || {}
+        config: deploymentConfig || {}
       };
 
       await deployToUnifiedPlatform(deploymentData);
@@ -172,6 +179,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
     setStep('analyze');
     setSelectedPlatform(null);
     setTokenInput('');
+    setDeploymentConfig(null);
     setError('');
     onHide();
   };
@@ -377,6 +385,20 @@ const DeploymentModal = ({ show, onHide, project }) => {
           </div>
         )}
 
+        {step === 'config' && (
+          <ConfigurationForm
+            onSubmit={handleConfigSubmit}
+            initialConfig={{
+              projectName: project.projectName || '',
+              framework: detectedTech.framework || 'static',
+              buildCommand: detectedTech.buildTool ? `${detectedTech.packageManager} run build` : '',
+              installCommand: detectedTech.packageManager ? `${detectedTech.packageManager} install` : 'npm install',
+              outputDirectory: 'dist'
+            }}
+            onBack={() => setStep('select')}
+          />
+        )}
+
         {step === 'confirm' && (
           <div className="py-4">
             <h5 className="mb-4 text-center" style={{ color: '#ffffff', fontWeight: '600', fontSize: '24px' }}>
@@ -461,7 +483,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
               </Button>
               <Button
                 variant="outline-light"
-                onClick={() => setStep('select')}
+                onClick={() => setStep('config')}
                 disabled={loading}
                 size="lg"
                 style={{
