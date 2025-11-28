@@ -32,6 +32,7 @@ function NetlifyCallback() {
         const returnToProject = localStorage.getItem('netlify_oauth_return_project');
         if (returnToProject) {
           localStorage.removeItem('netlify_oauth_return_project');
+          localStorage.setItem('open_deploy_modal_netlify', 'true');
           navigate(`/projects/${returnToProject}`);
         } else {
           navigate('/projects');

@@ -34,6 +34,15 @@ const DeploymentModal = ({ show, onHide, project }) => {
     if (show) {
       fetchTokens();
       analyzeProject();
+
+      const shouldOpenNetlifyConfig = localStorage.getItem('open_deploy_modal_netlify');
+      if (shouldOpenNetlifyConfig === 'true') {
+        localStorage.removeItem('open_deploy_modal_netlify');
+        setTimeout(() => {
+          setSelectedPlatform('netlify');
+          setStep('config');
+        }, 1000);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show]);

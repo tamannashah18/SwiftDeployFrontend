@@ -21,6 +21,13 @@ const ProjectDetail = () => {
     fetchProjectDetails();
   }, [id]);
 
+  useEffect(() => {
+    const shouldOpenDeployModal = localStorage.getItem('open_deploy_modal_netlify');
+    if (shouldOpenDeployModal === 'true' && project) {
+      setShowDeployModal(true);
+    }
+  }, [project]);
+
   const fetchProjectDetails = async () => {
     try {
       setLoading(true);
