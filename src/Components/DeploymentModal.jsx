@@ -18,9 +18,13 @@ const DeploymentModal = ({ show, onHide, project }) => {
   const [deploymentConfig, setDeploymentConfig] = useState(null);
   const [detectedTech, setDetectedTech] = useState({
     framework: '',
+    frontendFramework: '',
+    backendFramework: '',
     buildTool: '',
     packageManager: '',
-    technologies: []
+    technologies: [],
+    projectType: '',
+    isStatic: false
   });
 
   const platformConfig = {
@@ -80,11 +84,19 @@ const DeploymentModal = ({ show, onHide, project }) => {
       if (result.analysis) {
         setPlatforms(result.analysis.allSuggestions || []);
         setRecommendedPlatform(result.analysis.recommendedPlatform?.platform || null);
+
+        const tech = result.analysis.detectedTechnologies || {};
+        const projectInfo = result.analysis.projectInfo || {};
+
         setDetectedTech({
-          framework: result.analysis.detectedTechnologies?.framework || 'Not detected',
-          buildTool: result.analysis.detectedTechnologies?.buildTool || 'Not detected',
-          packageManager: result.analysis.detectedTechnologies?.packageManager || 'Not detected',
-          technologies: result.analysis.detectedTechnologies?.technologies || []
+          framework: projectInfo.frontendFramework || tech.framework || 'Not detected',
+          frontendFramework: projectInfo.frontendFramework || '',
+          backendFramework: projectInfo.backendFramework || '',
+          buildTool: tech.buildTool || 'Not detected',
+          packageManager: tech.packageManager || 'npm',
+          technologies: tech.technologies || [],
+          projectType: projectInfo.type || 'Unknown',
+          isStatic: tech.isStatic || false
         });
         setStep('select');
       } else {
@@ -191,6 +203,31 @@ const DeploymentModal = ({ show, onHide, project }) => {
     setDeploymentConfig(null);
     setError('');
     onHide();
+  };
+
+  const getFrameworkValue = (framework) => {
+    if (!framework || framework === 'Not detected') return 'static';
+    const lowerFramework = framework.toLowerCase();
+    if (lowerFramework.includes('react')) return 'react';
+    if (lowerFramework.includes('vue')) return 'vue';
+    if (lowerFramework.includes('angular')) return 'angular';
+    if (lowerFramework.includes('next')) return 'nextjs';
+    if (lowerFramework.includes('nuxt')) return 'nuxtjs';
+    if (lowerFramework.includes('gatsby')) return 'gatsby';
+    if (lowerFramework.includes('svelte')) return 'svelte';
+    return 'static';
+  };
+
+  const getDefaultOutputDir = (framework, buildTool) => {
+    if (selectedPlatform === 'githubpages') return '/';
+    if (!framework || framework === 'Not detected') return '.';
+
+    const lowerFramework = framework.toLowerCase();
+    if (lowerFramework.includes('next')) return '.next';
+    if (lowerFramework.includes('nuxt')) return '.nuxt';
+    if (buildTool && buildTool.toLowerCase() === 'vite') return 'dist';
+    if (lowerFramework.includes('react') || lowerFramework.includes('vue')) return 'build';
+    return 'dist';
   };
 
   return (
@@ -399,10 +436,11 @@ const DeploymentModal = ({ show, onHide, project }) => {
             onSubmit={handleConfigSubmit}
             initialConfig={{
               projectName: project.projectName || '',
-              framework: detectedTech.framework || 'static',
+              framework: getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework),
               buildCommand: detectedTech.buildTool ? `${detectedTech.packageManager} run build` : '',
               installCommand: detectedTech.packageManager ? `${detectedTech.packageManager} install` : 'npm install',
-              outputDirectory: 'dist'
+              outputDirectory: getDefaultOutputDir(detectedTech.frontendFramework || detectedTech.framework, detectedTech.buildTool),
+              nodeVersion: '18'
             }}
             onBack={() => setStep('select')}
           />

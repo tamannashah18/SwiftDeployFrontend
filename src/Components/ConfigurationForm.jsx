@@ -12,7 +12,6 @@ const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack }) => {
     nodeVersion: initialConfig.nodeVersion || '18',
     domain: initialConfig.domain || '',
     framework: initialConfig.framework || 'static',
-    projectType: initialConfig.projectType || 'Static',
     enableHttps: initialConfig.enableHttps !== undefined ? initialConfig.enableHttps : true,
     environmentVariables: initialConfig.environmentVariables || {},
     redirects: initialConfig.redirects || [],
