@@ -6,6 +6,7 @@ import { getUserProjects } from '../api/deployments';
 import { FaGithub, FaNetworkWired, FaCloudflare, FaRocket } from 'react-icons/fa';
 import { SiNetlify, SiVercel } from 'react-icons/si';
 import '../css/Responsive.css';
+import '../css/Dashboard.css';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -92,51 +93,42 @@ function Dashboard() {
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h2 className="h4 mb-0" style={{ color: '#ffffff' }}>Quick Actions</h2>
             </div>
-            <div className="row g-4">
-              <div className="col-sm-12 col-md-6 col-xl-4">
+            <div className="row g-3">
+              <div className="col-12 col-md-4">
                 <div
-                  className="card border-0 shadow-sm h-100 cursor-pointer"
+                  className="quick-action-card"
                   onClick={() => navigate('/new-project')}
-                  style={{ cursor: 'pointer', transition: 'transform 0.2s', backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  <div className="card-body text-center py-5">
-                    <FaRocket size={48} style={{ color: '#b89dff' }} className="mb-3" />
-                    <h5 className="card-title" style={{ color: '#ffffff' }}>New Deployment</h5>
-                    <p className="card-text small" style={{ color: '#b8a3d9' }}>Deploy a new project quickly</p>
+                  <div className="card-body">
+                    <FaRocket className="mb-2" />
+                    <h5 className="card-title">New Deployment</h5>
+                    <p className="card-text">Deploy a new project quickly</p>
                   </div>
                 </div>
               </div>
-              <div className="col-sm-12 col-md-6 col-xl-4">
+              <div className="col-12 col-md-4">
                 <div
-                  className="card border-0 shadow-sm h-100 cursor-pointer"
+                  className="quick-action-card"
                   onClick={() => navigate('/projects')}
-                  style={{ cursor: 'pointer', transition: 'transform 0.2s', backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  <div className="card-body text-center py-5">
-                    <FaNetworkWired size={48} style={{ color: '#b89dff' }} className="mb-3" />
-                    <h5 className="card-title" style={{ color: '#ffffff' }}>View Projects</h5>
-                    <p className="card-text small" style={{ color: '#b8a3d9' }}>Manage your {projects.length} projects</p>
+                  <div className="card-body">
+                    <FaNetworkWired className="mb-2" />
+                    <h5 className="card-title">View Projects</h5>
+                    <p className="card-text">Manage your {projects.length} projects</p>
                   </div>
                 </div>
               </div>
-              <div className="col-sm-12 col-md-6 col-xl-4">
+              <div className="col-12 col-md-4">
                 <div
-                  className="card border-0 shadow-sm h-100 cursor-pointer"
+                  className="quick-action-card"
                   onClick={() => navigate('/deployments')}
-                  style={{ cursor: 'pointer', transition: 'transform 0.2s', backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}
-                  onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-                  onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
                 >
-                  <div className="card-body text-center py-5">
-                    <div className="spinner-border mb-3" role="status" style={{ width: '48px', height: '48px', color: '#b89dff' }}>
+                  <div className="card-body">
+                    <div className="spinner-border" role="status">
                       <span className="visually-hidden">Loading...</span>
                     </div>
-                    <h5 className="card-title" style={{ color: '#ffffff' }}>Monitor Deployments</h5>
-                    <p className="card-text small" style={{ color: '#b8a3d9' }}>Track deployment status</p>
+                    <h5 className="card-title">Monitor Deployments</h5>
+                    <p className="card-text">Track deployment status</p>
                   </div>
                 </div>
               </div>
