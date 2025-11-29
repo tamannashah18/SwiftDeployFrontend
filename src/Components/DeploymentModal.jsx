@@ -30,7 +30,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
   const platformConfig = {
     netlify: { name: 'Netlify', icon: SiNetlify, color: '#00C7B7', requiresOAuth: true },
     vercel: { name: 'Vercel', icon: SiVercel, color: '#000', requiresOAuth: false },
-    'github-pages': { name: 'GitHub Pages', icon: FaGithub, color: '#333', requiresOAuth: false },
+    'githubpages': { name: 'GitHub Pages', icon: FaGithub, color: '#333', requiresOAuth: false },
     'github pages': { name: 'GitHub Pages', icon: FaGithub, color: '#333', requiresOAuth: false },
     cloudflare: { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
     'cloudflare pages': { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
@@ -38,7 +38,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
   const normalizePlatformName = (name) => {
     const lower = name.toLowerCase();
-    if (lower.includes('github')) return 'github-pages';
+    if (lower.includes('github')) return 'githubpages';
     if (lower.includes('cloudflare')) return 'cloudflare';
     if (lower.includes('netlify')) return 'netlify';
     if (lower.includes('vercel')) return 'vercel';
@@ -68,7 +68,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
       setTokens({
         netlify: tokenData.hasNetlifyToken,
         vercel: tokenData.hasVercelToken,
-        'github-pages': tokenData.hasGitHubToken,
+        'githubpages': tokenData.hasGitHubToken,
         cloudflare: tokenData.hasCloudflareToken,
       });
     } catch (err) {
@@ -88,7 +88,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
     try {
       const [owner, repo] = project.repoId.split('/');
       const branch = project.branch || 'main';
-      const token = tokens['github-pages'];
+      const token = tokens['githubpages'];
 
       const result = await analyzeAndSuggest(owner, repo, branch, token);
       

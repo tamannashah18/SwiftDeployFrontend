@@ -230,6 +230,7 @@ const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack }) => {
                   value={config.nodeVersion}
                   onChange={(e) => handleInputChange('nodeVersion', e.target.value)}
                 >
+                  <option value=""></option>
                   <option value="20">Node.js 20</option>
                   <option value="18">Node.js 18 (LTS)</option>
                   <option value="16">Node.js 16</option>
