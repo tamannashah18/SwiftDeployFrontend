@@ -158,15 +158,37 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
 
     const repoName = deploymentData.repoName || deploymentData.repo;
 
+    const config = deploymentData.config || {};
+    const formattedConfig = {
+      ProjectName: config.projectName || deploymentData.projectId || 'Deployed Project',
+      BuildCommand: config.buildCommand || '',
+      OutputDirectory: config.outputDirectory || (deploymentData.platform === 'githubpages' ? '/' : '.'),
+      InstallCommand: config.installCommand || '',
+      NodeVersion: config.nodeVersion || '',
+      Domain: config.domain || '',
+      Framework: config.framework || (deploymentData.platform === 'githubpages' ? 'legacy' : 'static'),
+      ProjectType: config.projectType || 'Static',
+      EnableHttps: config.enableHttps !== undefined ? config.enableHttps : true,
+      EnvironmentVariables: config.environmentVariables || {},
+      Redirects: (config.redirects || []).map(r => ({
+        From: r.from,
+        To: r.to,
+        Status: r.status
+      })),
+      Headers: (config.headers || []).map(h => ({
+        Source: h.source,
+        Headers: h.headers
+      }))
+    };
+
     const payload = {
       userId: user.id,
-      projectName: deploymentData.projectId || 'Deployed Project',
+      ProjectName: formattedConfig.ProjectName,
       description: deploymentData.description || 'Deployed via SwiftDeploy',
       platform: deploymentData.platform,
       gitHubRepo: `${deploymentData.owner}/${repoName}`,
       branch: deploymentData.branch || 'main',
-      gitHubToken: githubToken,
-      config: deploymentData.config || {}
+      config: formattedConfig
     };
 
     const response = await apiClient.post('/unifieddeployment/deploy-with-github', payload);

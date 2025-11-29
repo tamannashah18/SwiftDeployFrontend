@@ -164,12 +164,12 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
       const [owner, repo] = project.repoId.split('/');
       const deploymentData = {
-        projectId: project._id || project.id,
+        projectId: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+        description: project.description || `Deployed ${project.projectName} via SwiftDeploy`,
         platform: selectedPlatform,
         owner,
         repo,
         branch: project.branch || 'main',
-        token: tokens[selectedPlatform],
         config: deploymentConfig || {}
       };
 
