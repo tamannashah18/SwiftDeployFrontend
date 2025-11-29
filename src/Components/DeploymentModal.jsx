@@ -31,7 +31,18 @@ const DeploymentModal = ({ show, onHide, project }) => {
     netlify: { name: 'Netlify', icon: SiNetlify, color: '#00C7B7', requiresOAuth: true },
     vercel: { name: 'Vercel', icon: SiVercel, color: '#000', requiresOAuth: false },
     'github-pages': { name: 'GitHub Pages', icon: FaGithub, color: '#333', requiresOAuth: false },
+    'github pages': { name: 'GitHub Pages', icon: FaGithub, color: '#333', requiresOAuth: false },
     cloudflare: { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
+    'cloudflare pages': { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
+  };
+
+  const normalizePlatformName = (name) => {
+    const lower = name.toLowerCase();
+    if (lower.includes('github')) return 'github-pages';
+    if (lower.includes('cloudflare')) return 'cloudflare';
+    if (lower.includes('netlify')) return 'netlify';
+    if (lower.includes('vercel')) return 'vercel';
+    return lower;
   };
 
   useEffect(() => {
@@ -110,17 +121,17 @@ const DeploymentModal = ({ show, onHide, project }) => {
   };
 
   const handlePlatformSelect = (platformObj) => {
-    const platformName = platformObj.platform.toLowerCase();
-    setSelectedPlatform(platformName);
-    const config = platformConfig[platformName];
+    const normalizedName = normalizePlatformName(platformObj.platform);
+    setSelectedPlatform(normalizedName);
+    const config = platformConfig[normalizedName];
 
-    if (config?.requiresOAuth && platformName === 'netlify') {
-      if (!tokens[platformName]) {
+    if (config?.requiresOAuth && normalizedName === 'netlify') {
+      if (!tokens[normalizedName]) {
         setStep('oauth');
         return;
       }
     } else {
-      if (!tokens[platformName]) {
+      if (!tokens[normalizedName]) {
         setStep('token');
         return;
       }
@@ -324,13 +335,14 @@ const DeploymentModal = ({ show, onHide, project }) => {
 
             <div className="row g-3">
               {platforms.map((platform, index) => {
-                const platformName = platform.platform.toLowerCase();
-                const config = platformConfig[platformName];
+                const normalizedName = normalizePlatformName(platform.platform);
+                const config = platformConfig[normalizedName];
                 const Icon = config?.icon || FaGithub;
                 const isRecommended = platform.isRecommended;
+                const hasToken = tokens[normalizedName];
 
                 return (
-                  <div key={platform} className="col-md-6">
+                  <div key={normalizedName || index} className="col-md-6">
                     <Card
                       onClick={() => handlePlatformSelect(platform)}
                       style={{
@@ -369,8 +381,8 @@ const DeploymentModal = ({ show, onHide, project }) => {
                           </div>
                         </div>
                         <h6 style={{ color: '#ffffff', marginTop: '1rem' }}>{config?.name}</h6>
-                        <small style={{ color: '#ffffff' }}>
-                          {tokens[platformName] ? 'Connected' : 'Not connected'}
+                        <small style={{ color: hasToken ? '#4ade80' : '#f87171' }}>
+                          {hasToken ? '✓ Connected' : '✗ Not connected'}
                         </small>
                       </Card.Body>
                     </Card>
