@@ -11,7 +11,6 @@ const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack }) => {
     nodeVersion: initialConfig.nodeVersion || '18',
     domain: initialConfig.domain || '',
     framework: initialConfig.framework || 'static',
-    projectType: initialConfig.projectType || 'Static',
     enableHttps: initialConfig.enableHttps !== undefined ? initialConfig.enableHttps : true,
     environmentVariables: initialConfig.environmentVariables || {},
     redirects: initialConfig.redirects || [],
@@ -176,21 +175,6 @@ const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack }) => {
             </Form.Select>
           </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label style={{ color: '#ffffff' }}>Project Type</Form.Label>
-            <Form.Select
-              value={config.projectType}
-              onChange={(e) => handleInputChange('projectType', e.target.value)}
-              style={{
-                backgroundColor: '#2d1b4e',
-                border: '1px solid #6c3fb5',
-                color: '#ffffff'
-              }}
-            >
-              <option value="Static">Static</option>
-              <option value="Framework">Framework</option>
-            </Form.Select>
-          </Form.Group>
         </Card.Body>
       </Card>
 

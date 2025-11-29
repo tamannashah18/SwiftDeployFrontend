@@ -440,8 +440,7 @@ const DeploymentModal = ({ show, onHide, project }) => {
               buildCommand: detectedTech.buildTool ? `${detectedTech.packageManager} run build` : '',
               installCommand: detectedTech.packageManager ? `${detectedTech.packageManager} install` : 'npm install',
               outputDirectory: getDefaultOutputDir(detectedTech.frontendFramework || detectedTech.framework, detectedTech.buildTool),
-              nodeVersion: '18',
-              projectType: detectedTech.isStatic ? 'Static' : 'Framework'
+              nodeVersion: '18'
             }}
             onBack={() => setStep('select')}
           />

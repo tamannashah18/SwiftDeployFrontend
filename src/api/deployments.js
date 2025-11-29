@@ -159,27 +159,42 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     const repoName = deploymentData.repoName || deploymentData.repo;
 
     const config = deploymentData.config || {};
+
     const formattedConfig = {
       ProjectName: config.projectName || deploymentData.projectId || 'Deployed Project',
       BuildCommand: config.buildCommand || '',
       OutputDirectory: config.outputDirectory || (deploymentData.platform === 'githubpages' ? '/' : '.'),
-      InstallCommand: config.installCommand || '',
-      NodeVersion: config.nodeVersion || '',
-      Domain: config.domain || '',
-      Framework: config.framework || (deploymentData.platform === 'githubpages' ? 'legacy' : 'static'),
-      ProjectType: config.projectType || 'Static',
-      EnableHttps: config.enableHttps !== undefined ? config.enableHttps : true,
-      EnvironmentVariables: config.environmentVariables || {},
-      Redirects: (config.redirects || []).map(r => ({
+      InstallCommand: config.installCommand || ''
+    };
+
+    if (config.nodeVersion) {
+      formattedConfig.NodeVersion = config.nodeVersion;
+    }
+    if (config.domain) {
+      formattedConfig.Domain = config.domain;
+    }
+    if (config.framework) {
+      formattedConfig.Framework = config.framework;
+    }
+    if (config.enableHttps !== undefined) {
+      formattedConfig.EnableHttps = config.enableHttps;
+    }
+    if (config.environmentVariables && Object.keys(config.environmentVariables).length > 0) {
+      formattedConfig.EnvironmentVariables = config.environmentVariables;
+    }
+    if (config.redirects && config.redirects.length > 0) {
+      formattedConfig.Redirects = config.redirects.map(r => ({
         From: r.from,
         To: r.to,
         Status: r.status
-      })),
-      Headers: (config.headers || []).map(h => ({
+      }));
+    }
+    if (config.headers && config.headers.length > 0) {
+      formattedConfig.Headers = config.headers.map(h => ({
         Source: h.source,
         Headers: h.headers
-      }))
-    };
+      }));
+    }
 
     const payload = {
       userId: user.id,
