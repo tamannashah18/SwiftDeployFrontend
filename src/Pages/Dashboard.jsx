@@ -27,12 +27,15 @@ function Dashboard() {
         setUser(userData);
 
         const tokens = await getUserTokens();
-        setConnectedPlatforms({
+        console.log('Fetched tokens:', tokens);
+        const platformStates = {
           github: !!tokens.hasGitHubToken,
           netlify: !!tokens.hasNetlifyToken,
           vercel: !!tokens.hasVercelToken,
           cloudflare: !!tokens.hasCloudflareToken,
-        });
+        };
+        console.log('Platform states:', platformStates);
+        setConnectedPlatforms(platformStates);
 
         if (userData?.id) {
           const projectsData = await getUserProjects(userData.id);
