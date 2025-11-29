@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Card, Form, Alert, Spinner, Badge } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { SiNetlify, SiVercel, SiCloudflare } from 'react-icons/si';
 import { FaGithub, FaCheckCircle } from 'react-icons/fa';
 import { analyzeAndSuggest, deployToUnifiedPlatform } from '../api/deployments';
 import { getUserTokens, savePlatformToken, startNetlifyLogin } from '../api/auth';
 import ConfigurationForm from './ConfigurationForm';
 
-const DeploymentModal = ({ show, onHide, project }) => {
+const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
+  const navigate = useNavigate();
   const [step, setStep] = useState('analyze');
   const [platforms, setPlatforms] = useState([]);
   const [recommendedPlatform, setRecommendedPlatform] = useState(null);
@@ -196,10 +198,48 @@ const DeploymentModal = ({ show, onHide, project }) => {
         config: deploymentConfig || {}
       };
 
-      await deployToUnifiedPlatform(deploymentData);
+      const response = await deployToUnifiedPlatform(deploymentData);
 
-      onHide();
-      window.location.reload();
+      // Handle successful deployment response
+      // Check for success in both lowercase and uppercase, and handle status number
+      const isSuccess = response && (
+        response.success === true || 
+        response.Success === true ||
+        (response.status !== undefined && typeof response.status === 'number' && response.status >= 6) ||
+        (response.status === 'Completed' || response.status === 'completed')
+      );
+      
+      if (isSuccess) {
+        onHide();
+        const projectId = response.ProjectId || response.projectId;
+        const mongoDeploymentId = response.MongoDeploymentId || response.mongoDeploymentId;
+        
+        // If onDeploymentStart callback is provided, use it instead of navigating
+        if (onDeploymentStart) {
+          onDeploymentStart({
+            projectId,
+            mongoDeploymentId,
+            deploymentUrl: response.DeploymentUrl || response.deploymentUrl,
+            githubRepoUrl: response.GitHubRepoUrl || response.githubRepoUrl,
+            configFileUrl: response.ConfigFileUrl || response.configFileUrl,
+            status: response.status,
+            success: isSuccess
+          });
+        } else {
+          // Fallback: navigate to deployment monitor if no callback provided
+          if (projectId) {
+            navigate(`/deployment/${projectId}`, {
+              state: {
+                mongoDeploymentId
+              }
+            });
+          } else {
+            window.location.reload();
+          }
+        }
+      } else {
+        throw new Error(response?.Message || response?.message || 'Deployment failed');
+      }
     } catch (err) {
       setError(err.message || 'Deployment failed');
     } finally {

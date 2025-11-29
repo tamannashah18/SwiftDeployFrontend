@@ -37,7 +37,26 @@ export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
       const status = await getDeploymentStatus(projectId);
       onUpdate(status);
 
-      if (status.status === 'Completed' || status.status === 'Failed') {
+      // Check for completion conditions (handle both raw and normalized status)
+      const rawStatus = status.Status || status.status;
+      const isSuccess = status.success === true || status.Success === true;
+      
+      // Check if deployment is completed
+      const isCompleted = 
+        rawStatus === 'Completed' || 
+        rawStatus === 'completed' || 
+        rawStatus === 'COMPLETED' ||
+        (typeof rawStatus === 'number' && rawStatus >= 6) ||
+        isSuccess;
+      
+      // Check if deployment failed
+      const isFailed = 
+        rawStatus === 'Failed' || 
+        rawStatus === 'failed' || 
+        rawStatus === 'FAILED' ||
+        (typeof rawStatus === 'number' && rawStatus < 0);
+
+      if (isCompleted || isFailed) {
         return status;
       }
 
@@ -119,9 +138,27 @@ export const getDeploymentById = async (deploymentId) => {
   }
 };
 
+export const getDeploymentsByRepoId = async (repoId) => {
+  try {
+    const response = await apiClient.get(`/deployments/repo/${repoId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const updateDeploymentStatus = async (deploymentId, status) => {
   try {
-    const response = await apiClient.put(`/deployments/${deploymentId}/status`, { status });
+    // Backend expects status as a JSON string in the body (e.g., "completed")
+    const response = await apiClient.put(
+      `/deployments/${deploymentId}/status`,
+      JSON.stringify(status), // Send as JSON string
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -157,12 +194,17 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     const githubToken = localStorage.getItem('github_access_token');
 
     const repoName = deploymentData.repoName || deploymentData.repo;
+    const repoId = deploymentData.repoId || `${deploymentData.owner}/${repoName}`;
 
     const config = deploymentData.config || {};
+    
+    // For static sites, keep build config empty
+    const isStaticSite = config.framework === 'static' || config.projectType === 'Static';
+    const buildCommand = isStaticSite ? '' : (config.buildCommand || '');
 
     const formattedConfig = {
       ProjectName: config.projectName || deploymentData.projectId || 'Deployed Project',
-      BuildCommand: config.buildCommand || '',
+      BuildCommand: buildCommand,
       OutputDirectory: config.outputDirectory || (deploymentData.platform === 'githubpages' ? '/' : '.'),
       InstallCommand: config.installCommand || ''
     };
@@ -206,8 +248,66 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
       config: formattedConfig
     };
 
-    const response = await apiClient.post('/unifieddeployment/deploy-with-github', payload);
-    return response.data;
+    // Call deploy-with-github first
+    let response;
+    try {
+      response = await apiClient.post('/unifieddeployment/deploy-with-github', payload);
+    } catch (deployError) {
+      throw deployError.response?.data || deployError;
+    }
+    
+    // After successful deployment response, create MongoDB deployment record
+    let mongoDeploymentId = null;
+    if (response.data) {
+      const responseData = response.data;
+      
+      // Check for success (handle both lowercase and uppercase)
+      const isSuccess = responseData.success === true || responseData.Success === true || 
+                       (responseData.success !== false && responseData.Success !== false);
+      
+      // Handle status - can be number (6 = completed) or string
+      let deploymentStatus = 'completed';
+      if (!isSuccess) {
+        deploymentStatus = 'failed';
+      } else if (responseData.status !== undefined) {
+        // Status 6 typically means completed, 0-5 are in-progress states
+        if (typeof responseData.status === 'number') {
+          deploymentStatus = responseData.status >= 6 ? 'completed' : 'processing';
+        } else if (typeof responseData.status === 'string') {
+          const statusLower = responseData.status.toLowerCase();
+          if (statusLower === 'completed' || statusLower === 'success') {
+            deploymentStatus = 'completed';
+          } else if (statusLower === 'failed' || statusLower === 'error') {
+            deploymentStatus = 'failed';
+          } else {
+            deploymentStatus = 'processing';
+          }
+        }
+      }
+      
+      const deploymentUrl = responseData.DeploymentUrl || responseData.deploymentUrl;
+      const projectId = responseData.ProjectId || responseData.projectId;
+      
+      // Create MongoDB deployment record with the response data
+      try {
+        const mongoDeployment = await createDeployment({
+          repoId: repoId,
+          serviceId: projectId || deploymentData.projectId || config.projectName || 'deployed-project',
+          serviceUrl: deploymentUrl || null,
+          status: deploymentStatus
+        });
+        mongoDeploymentId = mongoDeployment.id || mongoDeployment._id || mongoDeployment.Id;
+      } catch (mongoError) {
+        console.warn('Failed to create MongoDB deployment record:', mongoError);
+        // Continue even if MongoDB record creation fails
+      }
+    }
+
+    // Include MongoDB deployment ID in response
+    return {
+      ...response.data,
+      MongoDeploymentId: mongoDeploymentId
+    };
   } catch (error) {
     throw error.response?.data || error;
   }

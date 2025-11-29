@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
 import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash } from 'react-icons/fa';
-import { getProjectDetails, deleteProject, regenerateConfig } from '../api/deployments';
+import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
+import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
 import '../css/ProjectDetail.css';
 
 const ProjectDetail = () => {
@@ -16,10 +17,55 @@ const ProjectDetail = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState('');
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [deploymentInfo, setDeploymentInfo] = useState(null);
+  const [allDeployments, setAllDeployments] = useState([]);
+  const [loadingDeployments, setLoadingDeployments] = useState(false);
 
   useEffect(() => {
     fetchProjectDetails();
   }, [id]);
+
+  useEffect(() => {
+    // Initialize deployment info from project if available
+    if (project && project._id && !deploymentInfo) {
+      // Check if project has deployment-related data
+      if (project.deploymentUrl || project.status) {
+        setDeploymentInfo({
+          projectId: project._id,
+          deploymentUrl: project.deploymentUrl,
+          githubRepoUrl: project.githubRepoUrl,
+          status: project.status
+        });
+      }
+    }
+  }, [project]);
+
+  useEffect(() => {
+    // Fetch all deployments for this project when deployment tab is active
+    const fetchDeployments = async () => {
+      if (activeTab === 'deployment' && project?.repoId) {
+        try {
+          setLoadingDeployments(true);
+          const deployments = await getDeploymentsByRepoId(project.repoId);
+          // Handle both single deployment and array response
+          if (Array.isArray(deployments)) {
+            setAllDeployments(deployments);
+          } else if (deployments) {
+            setAllDeployments([deployments]);
+          } else {
+            setAllDeployments([]);
+          }
+        } catch (err) {
+          console.warn('Failed to fetch deployments:', err);
+          setAllDeployments([]);
+        } finally {
+          setLoadingDeployments(false);
+        }
+      }
+    };
+
+    fetchDeployments();
+  }, [activeTab, project?.repoId]);
 
   useEffect(() => {
     const shouldOpenDeployModal = localStorage.getItem('open_deploy_modal_netlify');
@@ -245,60 +291,179 @@ const ProjectDetail = () => {
 
           {activeTab === 'deployment' && (
             <div className="deployment-info">
-              {project.githubRepoUrl && (
-                <Card className="mb-4">
-                  <Card.Body>
-                    <div className="d-flex align-items-center mb-3">
-                      <FaGithub className="me-2" size={20} />
-                      <h5 className="mb-0">GitHub Repository</h5>
+              {/* Show deployment monitor if there's an active deployment */}
+              {deploymentInfo?.projectId ? (
+                <DeploymentMonitorEmbedded
+                  projectId={deploymentInfo.projectId}
+                  mongoDeploymentId={deploymentInfo.mongoDeploymentId}
+                  onStatusUpdate={(status) => {
+                    setDeploymentInfo(prev => ({ ...prev, ...status }));
+                    // Update project with latest deployment info
+                    if (status.deploymentUrl) {
+                      setProject(prev => ({
+                        ...prev,
+                        deploymentUrl: status.deploymentUrl,
+                        githubRepoUrl: status.githubRepoUrl || prev.githubRepoUrl,
+                        status: status.status === 'Completed' ? 'Completed' : prev.status
+                      }));
+                    }
+                    // Refresh deployments list
+                    if (project?.repoId) {
+                      getDeploymentsByRepoId(project.repoId).then(deployments => {
+                        if (Array.isArray(deployments)) {
+                          setAllDeployments(deployments);
+                        } else if (deployments) {
+                          setAllDeployments([deployments]);
+                        }
+                      }).catch(console.warn);
+                    }
+                  }}
+                />
+              ) : (
+                <>
+                  {/* Static deployment info from project */}
+                  {project.githubRepoUrl && (
+                    <Card className="mb-4">
+                      <Card.Body>
+                        <div className="d-flex align-items-center mb-3">
+                          <FaGithub className="me-2" size={20} />
+                          <h5 className="mb-0">GitHub Repository</h5>
+                        </div>
+                        <a 
+                          href={project.githubRepoUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="deployment-link"
+                        >
+                          {project.githubRepoName || project.githubRepoUrl}
+                          <FaExternalLinkAlt className="ms-2" size={12} />
+                        </a>
+                      </Card.Body>
+                    </Card>
+                  )}
+
+                  {project.deploymentUrl && (
+                    <Card className="mb-4">
+                      <Card.Body>
+                        <h5 className="mb-3">Deployment URL</h5>
+                        <a 
+                          href={project.deploymentUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="deployment-link"
+                        >
+                          {project.deploymentUrl}
+                          <FaExternalLinkAlt className="ms-2" size={12} />
+                        </a>
+                        {project.status === 'Completed' && (
+                          <Button 
+                            variant="primary" 
+                            className="mt-3"
+                            onClick={() => window.open(project.deploymentUrl, '_blank')}
+                          >
+                            View Live Site
+                          </Button>
+                        )}
+                      </Card.Body>
+                    </Card>
+                  )}
+
+                  {project.status === 'Failed' && (
+                    <Alert variant="danger">
+                      <strong>Deployment Failed</strong>
+                      <p className="mb-0 mt-2">
+                        The deployment encountered an error. Please check your configuration and try again.
+                      </p>
+                    </Alert>
+                  )}
+
+                  {!project.githubRepoUrl && !project.deploymentUrl && (
+                    <Alert variant="info">
+                      No deployment information available. Click "Deploy" to start a new deployment.
+                    </Alert>
+                  )}
+                </>
+              )}
+
+              {/* Deployment History */}
+              <Card className="mt-4">
+                <Card.Body>
+                  <h5 className="mb-3">Deployment History</h5>
+                  {loadingDeployments ? (
+                    <div className="text-center py-3">
+                      <Spinner animation="border" size="sm" variant="primary" />
                     </div>
-                    <a 
-                      href={project.githubRepoUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="deployment-link"
-                    >
-                      {project.githubRepoName || project.githubRepoUrl}
-                      <FaExternalLinkAlt className="ms-2" size={12} />
-                    </a>
-                  </Card.Body>
-                </Card>
-              )}
-
-              {project.deploymentUrl && (
-                <Card className="mb-4">
-                  <Card.Body>
-                    <h5 className="mb-3">Deployment URL</h5>
-                    <a 
-                      href={project.deploymentUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="deployment-link"
-                    >
-                      {project.deploymentUrl}
-                      <FaExternalLinkAlt className="ms-2" size={12} />
-                    </a>
-                    {project.status === 'Completed' && (
-                      <Button 
-                        variant="primary" 
-                        className="mt-3"
-                        onClick={() => window.open(project.deploymentUrl, '_blank')}
-                      >
-                        View Live Site
-                      </Button>
-                    )}
-                  </Card.Body>
-                </Card>
-              )}
-
-              {project.status === 'Failed' && (
-                <Alert variant="danger">
-                  <strong>Deployment Failed</strong>
-                  <p className="mb-0 mt-2">
-                    The deployment encountered an error. Please check your configuration and try again.
-                  </p>
-                </Alert>
-              )}
+                  ) : allDeployments.length > 0 ? (
+                    <div className="list-group">
+                      {allDeployments.map((deployment, index) => {
+                        const deploymentId = deployment.id || deployment._id || deployment.Id;
+                        const status = deployment.status || 'unknown';
+                        const deployedAt = deployment.deployedAt ? new Date(deployment.deployedAt) : null;
+                        
+                        return (
+                          <div
+                            key={deploymentId || index}
+                            className="list-group-item d-flex justify-content-between align-items-start"
+                          >
+                            <div className="flex-grow-1">
+                              <div className="d-flex align-items-center mb-2">
+                                <Badge
+                                  bg={
+                                    status === 'completed' ? 'success' :
+                                    status === 'failed' ? 'danger' :
+                                    status === 'processing' ? 'warning' :
+                                    'secondary'
+                                  }
+                                  className="me-2"
+                                >
+                                  {status}
+                                </Badge>
+                                {deployment.serviceId && (
+                                  <span className="text-muted small me-2">
+                                    Service: {deployment.serviceId}
+                                  </span>
+                                )}
+                              </div>
+                              {deployment.serviceUrl && (
+                                <div className="mb-2">
+                                  <a
+                                    href={deployment.serviceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary small"
+                                  >
+                                    {deployment.serviceUrl}
+                                    <FaExternalLinkAlt className="ms-1" size={10} />
+                                  </a>
+                                </div>
+                              )}
+                              {deployment.repoId && (
+                                <div className="text-muted small mb-1">
+                                  Repo: {deployment.repoId}
+                                </div>
+                              )}
+                              {deployedAt && (
+                                <div className="text-muted small">
+                                  Deployed: {deployedAt.toLocaleString()}
+                                </div>
+                              )}
+                              {deploymentId && (
+                                <div className="text-muted small font-monospace mt-1">
+                                  ID: {deploymentId}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <Alert variant="info" className="mb-0">
+                      No deployment history found for this project.
+                    </Alert>
+                  )}
+                </Card.Body>
+              </Card>
             </div>
           )}
 
@@ -375,6 +540,13 @@ const ProjectDetail = () => {
         show={showDeployModal}
         onHide={() => setShowDeployModal(false)}
         project={project}
+        onDeploymentStart={(deploymentData) => {
+          // Set deployment info and switch to deployment tab
+          setDeploymentInfo(deploymentData);
+          setActiveTab('deployment');
+          // Refresh project details to get latest info
+          fetchProjectDetails();
+        }}
       />
     </div>
   );

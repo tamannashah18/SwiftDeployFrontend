@@ -1,36 +1,177 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { NavigationBar } from '../Components/NavigationBar';
-import { getDeploymentStatus, pollDeployment } from '../api/deployments';
+import { getDeploymentStatus, pollDeployment, getDeploymentById, updateDeploymentStatus } from '../api/deployments';
 import { FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
 
 function DeploymentMonitor() {
   const { projectId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [deployment, setDeployment] = useState(null);
+  const [mongoDeployment, setMongoDeployment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let isMounted = true;
+    let pollingStopped = false;
+    let pollAbortController = null;
+
     const startPolling = async () => {
       try {
         setLoading(true);
+        
+        // Get MongoDB deployment ID from location state or try to find it
+        const mongoDeploymentId = location.state?.mongoDeploymentId || null;
+        
+        // Fetch MongoDB deployment data if ID is available
+        if (mongoDeploymentId && isMounted) {
+          try {
+            const mongoData = await getDeploymentById(mongoDeploymentId);
+            if (isMounted) {
+              setMongoDeployment(mongoData);
+            }
+          } catch (mongoError) {
+            console.warn('Failed to fetch MongoDB deployment:', mongoError);
+          }
+        }
+
+        // Check initial status before starting polling
+        try {
+          const initialStatus = await getDeploymentStatus(projectId);
+          const rawStatus = initialStatus.Status || initialStatus.status;
+          const isSuccess = initialStatus.success === true || initialStatus.Success === true;
+          const isCompleted = 
+            rawStatus === 'Completed' || 
+            rawStatus === 'completed' || 
+            rawStatus === 'COMPLETED' ||
+            (typeof rawStatus === 'number' && rawStatus >= 6) ||
+            isSuccess;
+          
+          if (isCompleted && isMounted) {
+            // Already completed, just set the status and stop
+            const normalizedStatus = {
+              ...initialStatus,
+              status: 'Completed',
+              message: initialStatus.Message || initialStatus.message,
+              githubRepoUrl: initialStatus.GitHubRepoUrl || initialStatus.githubRepoUrl,
+              deploymentUrl: initialStatus.DeploymentUrl || initialStatus.deploymentUrl,
+              configFileUrl: initialStatus.ConfigFileUrl || initialStatus.configFileUrl,
+              projectId: initialStatus.ProjectId || initialStatus.projectId,
+              success: true,
+              progress: initialStatus.Progress || initialStatus.progress || 100,
+              currentStep: initialStatus.CurrentStep || initialStatus.currentStep,
+              mongoDeploymentId: initialStatus.MongoDeploymentId || initialStatus.mongoDeploymentId || mongoDeploymentId
+            };
+            setDeployment(normalizedStatus);
+            setLoading(false);
+            pollingStopped = true;
+            return;
+          }
+        } catch (err) {
+          console.warn('Failed to get initial status:', err);
+        }
+
+        if (pollingStopped || !isMounted) return;
+
         await pollDeployment(
           projectId,
-          (status) => {
-            setDeployment(status);
-            setLoading(false);
+          async (status) => {
+            if (!isMounted || pollingStopped) return;
+
+            // Normalize response format (handle both PascalCase and camelCase, and numeric status)
+            const rawStatus = status.Status || status.status;
+            let normalizedStatusValue = rawStatus;
+            
+            // Handle numeric status (6 = completed, 0-5 = in progress)
+            if (typeof rawStatus === 'number') {
+              if (rawStatus >= 6) {
+                normalizedStatusValue = 'Completed';
+              } else if (rawStatus < 0) {
+                normalizedStatusValue = 'Failed';
+              } else {
+                normalizedStatusValue = 'Processing';
+              }
+            }
+            
+            // Check success flag (handle both lowercase and uppercase)
+            const isSuccess = status.success === true || status.Success === true || 
+                            (status.success !== false && status.Success !== false && normalizedStatusValue === 'Completed');
+            
+            // Check if deployment is completed or failed - stop polling
+            const isCompleted = normalizedStatusValue === 'Completed' || isSuccess;
+            const isFailed = normalizedStatusValue === 'Failed';
+            
+            if (isCompleted || isFailed) {
+              pollingStopped = true;
+            }
+            
+            const normalizedStatus = {
+              ...status,
+              status: normalizedStatusValue,
+              message: status.Message || status.message,
+              githubRepoUrl: status.GitHubRepoUrl || status.githubRepoUrl,
+              deploymentUrl: status.DeploymentUrl || status.deploymentUrl,
+              configFileUrl: status.ConfigFileUrl || status.configFileUrl,
+              projectId: status.ProjectId || status.projectId,
+              success: isSuccess,
+              progress: status.Progress || status.progress || (isCompleted ? 100 : 0),
+              currentStep: status.CurrentStep || status.currentStep,
+              mongoDeploymentId: status.MongoDeploymentId || status.mongoDeploymentId || mongoDeploymentId
+            };
+            
+            // Update MongoDB deployment status if we have the ID
+            const deploymentId = normalizedStatus.mongoDeploymentId || mongoDeploymentId;
+            if (deploymentId && isMounted && !pollingStopped) {
+              try {
+                // Map unified deployment status to MongoDB status
+                let mongoStatus = 'processing';
+                if (normalizedStatus.status === 'Completed' || normalizedStatus.success || 
+                    (typeof rawStatus === 'number' && rawStatus >= 6)) {
+                  mongoStatus = 'completed';
+                } else if (normalizedStatus.status === 'Failed' || 
+                          (typeof rawStatus === 'number' && rawStatus < 0)) {
+                  mongoStatus = 'failed';
+                } else if (normalizedStatus.status === 'queued' || normalizedStatus.status === 'Queued') {
+                  mongoStatus = 'queued';
+                }
+                
+                await updateDeploymentStatus(deploymentId, mongoStatus);
+                
+                // Refresh MongoDB deployment data
+                const updatedMongoData = await getDeploymentById(deploymentId);
+                if (isMounted) {
+                  setMongoDeployment(updatedMongoData);
+                }
+              } catch (updateError) {
+                console.warn('Failed to update MongoDB deployment status:', updateError);
+              }
+            }
+            
+            if (isMounted) {
+              setDeployment(normalizedStatus);
+              setLoading(false);
+            }
           },
           3000
         );
       } catch (err) {
-        setError('Failed to fetch deployment status');
-        console.error(err);
-        setLoading(false);
+        if (isMounted) {
+          setError('Failed to fetch deployment status');
+          console.error(err);
+          setLoading(false);
+        }
       }
     };
 
     startPolling();
+
+    // Cleanup function to stop polling if component unmounts
+    return () => {
+      isMounted = false;
+      pollingStopped = true;
+    };
   }, [projectId]);
 
   const getStatusIcon = (status) => {
@@ -94,9 +235,9 @@ function DeploymentMonitor() {
             <div className="card border-0 shadow-sm">
               <div className="card-body p-5">
                 <div className="text-center mb-5">
-                  {getStatusIcon(deployment?.status)}
+                  {getStatusIcon(deployment?.status === 'Completed' || deployment?.success ? 'Completed' : deployment?.status)}
                   <h2 className="mt-4 mb-2">
-                    {deployment?.status === 'Completed'
+                    {deployment?.status === 'Completed' || deployment?.success
                       ? 'Deployment Successful!'
                       : deployment?.status === 'Failed'
                       ? 'Deployment Failed'
@@ -174,7 +315,98 @@ function DeploymentMonitor() {
                       </div>
                     )}
 
-                    {deployment.githubRepoUrl && (
+                    {(deployment.status === 'Completed' || deployment.success || mongoDeployment) && (
+                      <div className="mb-4">
+                        <h5 className="mb-3">Deployment Information</h5>
+                        <div className="card bg-light">
+                          <div className="card-body">
+                            {/* MongoDB Deployment Info */}
+                            {mongoDeployment && (
+                              <>
+                                {mongoDeployment.repoId && (
+                                  <div className="mb-3">
+                                    <strong>Repository ID:</strong>{' '}
+                                    <span className="text-muted">{mongoDeployment.repoId}</span>
+                                  </div>
+                                )}
+                                {mongoDeployment.serviceId && (
+                                  <div className="mb-3">
+                                    <strong>Service ID:</strong>{' '}
+                                    <span className="text-muted">{mongoDeployment.serviceId}</span>
+                                  </div>
+                                )}
+                                {mongoDeployment.status && (
+                                  <div className="mb-3">
+                                    <strong>MongoDB Status:</strong>{' '}
+                                    <span className={`badge bg-${mongoDeployment.status === 'completed' ? 'success' : mongoDeployment.status === 'failed' ? 'danger' : 'warning'}`}>
+                                      {mongoDeployment.status}
+                                    </span>
+                                  </div>
+                                )}
+                                {mongoDeployment.deployedAt && (
+                                  <div className="mb-3">
+                                    <strong>Deployed At:</strong>{' '}
+                                    <span className="text-muted">
+                                      {new Date(mongoDeployment.deployedAt).toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                                {(mongoDeployment.id || mongoDeployment._id || mongoDeployment.Id) && (
+                                  <div className="mb-3">
+                                    <strong>Deployment ID:</strong>{' '}
+                                    <span className="text-muted font-monospace small">
+                                      {mongoDeployment.id || mongoDeployment._id || mongoDeployment.Id}
+                                    </span>
+                                  </div>
+                                )}
+                                <hr className="my-3" />
+                              </>
+                            )}
+
+                            {/* Unified Deployment Info */}
+                            {deployment.githubRepoUrl && (
+                              <div className="mb-3">
+                                <strong>GitHub Repository:</strong>{' '}
+                                <a href={deployment.githubRepoUrl} target="_blank" rel="noopener noreferrer" className="text-primary">
+                                  {deployment.githubRepoUrl}
+                                </a>
+                              </div>
+                            )}
+
+                            {(deployment.deploymentUrl || mongoDeployment?.serviceUrl) && (
+                              <div className="mb-3">
+                                <strong>Deployment URL:</strong>{' '}
+                                <a 
+                                  href={deployment.deploymentUrl || mongoDeployment.serviceUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="text-success fw-bold"
+                                >
+                                  {deployment.deploymentUrl || mongoDeployment.serviceUrl}
+                                </a>
+                              </div>
+                            )}
+
+                            {deployment.configFileUrl && (
+                              <div className="mb-3">
+                                <strong>Config File URL:</strong>{' '}
+                                <a href={deployment.configFileUrl} target="_blank" rel="noopener noreferrer" className="text-info">
+                                  {deployment.configFileUrl}
+                                </a>
+                              </div>
+                            )}
+
+                            {deployment.projectId && (
+                              <div className="mb-0">
+                                <strong>Project ID:</strong> <span className="text-muted">{deployment.projectId}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {deployment.githubRepoUrl && deployment.status !== 'Completed' && !deployment.success && (
                       <div className="mb-3">
                         <strong>GitHub Repository:</strong>{' '}
                         <a href={deployment.githubRepoUrl} target="_blank" rel="noopener noreferrer">
@@ -183,20 +415,11 @@ function DeploymentMonitor() {
                       </div>
                     )}
 
-                    {deployment.deploymentUrl && deployment.status === 'Completed' && (
-                      <div className="mb-4">
-                        <strong>Deployment URL:</strong>{' '}
-                        <a href={deployment.deploymentUrl} target="_blank" rel="noopener noreferrer" className="text-success">
-                          {deployment.deploymentUrl}
-                        </a>
-                      </div>
-                    )}
-
                     <div className="d-flex justify-content-between mt-4">
                       <button className="btn btn-outline-secondary" onClick={() => navigate('/projects')}>
                         Back to Projects
                       </button>
-                      {deployment.status === 'Completed' && (
+                      {(deployment.status === 'Completed' || deployment.success) && deployment.deploymentUrl && (
                         <button
                           className="btn btn-primary"
                           onClick={() => window.open(deployment.deploymentUrl, '_blank')}
