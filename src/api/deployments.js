@@ -129,10 +129,7 @@ export const regenerateConfig = async (projectId, config, projectName = null) =>
       domain: config?.domain || config?.Domain || '',
       environmentVariables: config?.environmentVariables || config?.EnvironmentVariables || {},
       redirects: config?.redirects || config?.Redirects || [],
-      headers: config?.headers || config?.Headers || [],
-      teamId: config?.teamId || config?.TeamId || '',
-      enableHttps: config?.enableHttps !== undefined ? config.enableHttps : (config?.EnableHttps !== undefined ? config.EnableHttps : true),
-      framework: config?.framework || config?.Framework || '',
+      headers: config?.headers || config?.Headers || [],      
       projectType: projectType,
     };
 
@@ -250,12 +247,7 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     if (config.domain) {
       formattedConfig.Domain = config.domain;
     }
-    if (config.framework) {
-      formattedConfig.Framework = config.framework;
-    }
-    if (config.enableHttps !== undefined) {
-      formattedConfig.EnableHttps = config.enableHttps;
-    }
+    
     if (config.environmentVariables && Object.keys(config.environmentVariables).length > 0) {
       formattedConfig.EnvironmentVariables = config.environmentVariables;
     }
