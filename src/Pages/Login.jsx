@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import '../css/Forms.css';
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../Contexts/AuthContext";
 
 function Login() {
   const [formData, setFormData] = useState({
@@ -10,6 +11,19 @@ function Login() {
   });
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const { login } = useAuth();
+
+  // Helper to get GitHub token from cookies
+  const getGitHubTokenFromCookie = () => {
+    const cookies = document.cookie.split('; ');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.split('=');
+      if (name === 'GitHubAccessToken') {
+        return value;
+      }
+    }
+    return null;
+  };
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -31,20 +45,23 @@ function Login() {
       return;
     }
     try {
-      await axios.post(
+      const response = await axios.post(
         "http://localhost:5280/api/User/login",
         {
           UsernameOrEmail: formData.UsernameOrEmail,
           Password: formData.password
         },
         { headers: { "Content-Type": "application/json" } }
-      ).then((response) => 
-        {
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user",JSON.stringify( response.data.user));
-        navigate("/projects");
-    });
+      );
+      
+      // Check for GitHub token in cookies (in case user came from GitHub OAuth flow)
+      const githubToken = getGitHubTokenFromCookie();
+      
+      // Use AuthContext login to properly set state and save GitHub token
+      await login(response.data.user, response.data.token, githubToken);
+      
       setFormData({ UsernameOrEmail: "", password: "" });
+      navigate("/projects");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }

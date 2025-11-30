@@ -11,7 +11,8 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('jwtToken');
+    // Check both keys for backwards compatibility
+    const token = localStorage.getItem('jwtToken') || localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -44,6 +45,7 @@ export const getStoredJwt = () => {
 
 export const clearAuth = () => {
   localStorage.removeItem('jwtToken');
+  localStorage.removeItem('token'); // Remove old key for backwards compatibility
   localStorage.removeItem('user');
   localStorage.removeItem('github_access_token');
 };

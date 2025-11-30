@@ -2,15 +2,31 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import '../css/Forms.css';
 import {useParams,useNavigate} from 'react-router-dom';
+import { useAuth } from "../Contexts/AuthContext";
+
 function CompleteProfile() {
     const params=useParams();
     const navigate=useNavigate();
+    const { login } = useAuth();
     const[userId,setUserId]=useState("");
     const [formData, setFormData] = useState({
         username: "",
         password: "",
         confirmPassword: ""
     });
+
+    // Helper to get GitHub token from cookies
+    const getGitHubTokenFromCookie = () => {
+      const cookies = document.cookie.split('; ');
+      for (const cookie of cookies) {
+        const [name, value] = cookie.split('=');
+        if (name === 'GitHubAccessToken') {
+          return value;
+        }
+      }
+      return null;
+    };
+
     useEffect(() => {
         if (params.userId) {
             setUserId(params.userId);
@@ -23,6 +39,7 @@ function CompleteProfile() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -51,8 +68,11 @@ function CompleteProfile() {
       return;
     }
 
+    setIsSubmitting(true);
+
     try {
-      await axios.post(
+      // Complete the profile
+      const completeResponse = await axios.post(
         "http://localhost:5280/api/user/complete-profile",
         {
           Username: formData.username,
@@ -60,9 +80,37 @@ function CompleteProfile() {
           UserId: userId
         },
         { headers: { "Content-Type": "application/json" } }
-      ).then((response) => navigate("/login")).catch((error) => console.log(error));
+      );
+
+      if (completeResponse.data.success) {
+        // Get GitHub token from cookie before login
+        const githubToken = getGitHubTokenFromCookie();
+        
+        // Auto-login with the new credentials
+        const loginResponse = await axios.post(
+          "http://localhost:5280/api/User/login",
+          {
+            UsernameOrEmail: formData.username,
+            Password: formData.password
+          },
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        // Use AuthContext login to properly set state and save GitHub token
+        await login(loginResponse.data.user, loginResponse.data.token, githubToken);
+        
+        setSuccess("Profile completed! Redirecting...");
+        
+        // Navigate to projects after successful login
+        setTimeout(() => {
+          navigate("/projects");
+        }, 500);
+      }
     } catch (err) {
+      console.error('Profile completion error:', err);
       setError(err.response?.data?.message || "Profile completion failed");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -103,8 +151,8 @@ function CompleteProfile() {
             onChange={handleChange}
             required
           />
-          <button type="submit" className="btn">
-            Complete Profile
+          <button type="submit" className="btn" disabled={isSubmitting}>
+            {isSubmitting ? 'Completing...' : 'Complete Profile'}
           </button>
         </form>
         {error && <div className="message error">{error}</div>}

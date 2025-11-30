@@ -14,10 +14,15 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
+        // Check for both 'jwtToken' and 'token' keys for backwards compatibility
+        const token = localStorage.getItem('jwtToken') || localStorage.getItem('token');
         if (token) {
-          // Optionally validate token with backend
-          // const user = await validateToken(token);
+          // Migrate old 'token' key to 'jwtToken' if needed
+          if (!localStorage.getItem('jwtToken') && localStorage.getItem('token')) {
+            localStorage.setItem('jwtToken', localStorage.getItem('token'));
+            localStorage.removeItem('token');
+          }
+          
           const userData = JSON.parse(localStorage.getItem('user'));
           if (userData) {
             setCurrentUser(userData);
@@ -25,6 +30,7 @@ export const AuthProvider = ({ children }) => {
         }
       } catch (error) {
         console.error('Auth check failed:', error);
+        localStorage.removeItem('jwtToken');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       } finally {
@@ -53,6 +59,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('jwtToken');
+    localStorage.removeItem('token'); // Remove old key for backwards compatibility
     localStorage.removeItem('user');
     localStorage.removeItem('github_access_token');
     setCurrentUser(null);
