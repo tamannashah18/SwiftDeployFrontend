@@ -19,7 +19,7 @@ function Profile() {
     github: "",
     vercel: "",
     netlify: "",
-    render: ""
+    cloudflare: ""
   });
   const [editMode, setEditMode] = useState(false);
   const [passwordMode, setPasswordMode] = useState(false);
@@ -43,7 +43,7 @@ function Profile() {
         github: localStorage.getItem("github_access_token") || "",
         vercel: localStorage.getItem("vercel_token") || "",
         netlify: localStorage.getItem("netlify_token") || "",
-        render: localStorage.getItem("render_token") || ""
+        cloudflare: localStorage.getItem("cloudflare_token") || ""
       });
     }
   }, []);
@@ -301,10 +301,10 @@ function Profile() {
             />
             <input
               type="text"
-              name="render"
-              value={platformTokens.render}
+              name="cloudflare"
+              value={platformTokens.cloudflare}
               onChange={handleTokenChange}
-              placeholder="Render Token"
+              placeholder="Cloudflare Token"
             />
             <button type="submit" className="btn">
               Save Tokens

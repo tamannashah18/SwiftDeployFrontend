@@ -16,7 +16,7 @@ function DeploymentMonitor() {
   useEffect(() => {
     let isMounted = true;
     let pollingStopped = false;
-    let pollAbortController = null;
+    let pollController = null;
 
     const startPolling = async () => {
       try {
@@ -75,7 +75,8 @@ function DeploymentMonitor() {
 
         if (pollingStopped || !isMounted) return;
 
-        await pollDeployment(
+        // Start polling and store the controller
+        const { promise, stop } = await pollDeployment(
           projectId,
           async (status) => {
             if (!isMounted || pollingStopped) return;
@@ -105,6 +106,9 @@ function DeploymentMonitor() {
             
             if (isCompleted || isFailed) {
               pollingStopped = true;
+              if (pollController) {
+                pollController.stop();
+              }
             }
             
             const normalizedStatus = {
@@ -156,9 +160,21 @@ function DeploymentMonitor() {
           },
           3000
         );
+        
+        pollController = { stop };
+        
+        // Handle any errors from the polling promise
+        promise.catch(err => {
+          if (isMounted && !pollingStopped) {
+            setError('Failed to fetch deployment status');
+            console.error('Polling error:', err);
+            setLoading(false);
+          }
+        });
+        
       } catch (err) {
         if (isMounted) {
-          setError('Failed to fetch deployment status');
+          setError('Failed to start deployment status polling');
           console.error(err);
           setLoading(false);
         }
@@ -171,6 +187,9 @@ function DeploymentMonitor() {
     return () => {
       isMounted = false;
       pollingStopped = true;
+      if (pollController) {
+        pollController.stop();
+      }
     };
   }, [projectId]);
 

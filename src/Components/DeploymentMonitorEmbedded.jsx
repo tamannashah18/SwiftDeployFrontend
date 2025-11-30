@@ -3,179 +3,274 @@ import { Card, Alert, Spinner } from 'react-bootstrap';
 import { getDeploymentStatus, pollDeployment, getDeploymentById, updateDeploymentStatus } from '../api/deployments';
 import { FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
 
-const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdate }) => {
+const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId: mongoDeploymentIdProp, onStatusUpdate }) => {
   const [deployment, setDeployment] = useState(null);
   const [mongoDeployment, setMongoDeployment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!projectId) {
-      setLoading(false);
-      return;
-    }
+// Update the useEffect hook in DeploymentMonitorEmbedded.jsx
+useEffect(() => {
+  if (!projectId) {
+    setLoading(false);
+    return;
+  }
 
-    let isMounted = true;
-    let pollingStopped = false;
+  let isMounted = true;
 
-    const startPolling = async () => {
+  const fetchStatus = async () => {
+    try {
+      setLoading(true);
+      
+      // Get MongoDB deployment ID from props
+      const mongoDeploymentId = mongoDeploymentIdProp;
+      
       try {
-        setLoading(true);
+        const status = await getDeploymentStatus(projectId);
         
-        // Fetch MongoDB deployment data if ID is available
-        if (mongoDeploymentId && isMounted) {
-          try {
-            const mongoData = await getDeploymentById(mongoDeploymentId);
-            if (isMounted) {
-              setMongoDeployment(mongoData);
-            }
-          } catch (mongoError) {
-            console.warn('Failed to fetch MongoDB deployment:', mongoError);
-          }
+        if (!isMounted) return;
+        
+        const rawStatus = status.Status || status.status;
+        const isSuccess = status.success === true || status.Success === true;
+        const isCompleted = 
+          rawStatus === 'Completed' || 
+          rawStatus === 'completed' || 
+          rawStatus === 'COMPLETED' ||
+          (typeof rawStatus === 'number' && rawStatus >= 6) ||
+          isSuccess;
+
+        const normalizedStatus = {
+          ...status,
+          status: isCompleted ? 'Completed' : (rawStatus || 'Processing'),
+          message: status.Message || status.message || (isCompleted ? 'Deployment completed' : 'Processing deployment...'),
+          githubRepoUrl: status.GitHubRepoUrl || status.githubRepoUrl,
+          deploymentUrl: status.DeploymentUrl || status.deploymentUrl,
+          configFileUrl: status.ConfigFileUrl || status.configFileUrl,
+          projectId: status.ProjectId || status.projectId || projectId,
+          success: isSuccess,
+          progress: status.Progress || status.progress || (isCompleted ? 100 : 0),
+          currentStep: status.CurrentStep || status.currentStep || (isCompleted ? 'Completed' : 'Processing'),
+          mongoDeploymentId: status.MongoDeploymentId || status.mongoDeploymentId || mongoDeploymentId
+        };
+
+        setDeployment(normalizedStatus);
+        
+        if (onStatusUpdate) {
+          onStatusUpdate(normalizedStatus);
         }
-
-        // Check initial status before starting polling
-        try {
-          const initialStatus = await getDeploymentStatus(projectId);
-          const rawStatus = initialStatus.Status || initialStatus.status;
-          const isSuccess = initialStatus.success === true || initialStatus.Success === true;
-          const isCompleted = 
-            rawStatus === 'Completed' || 
-            rawStatus === 'completed' || 
-            rawStatus === 'COMPLETED' ||
-            (typeof rawStatus === 'number' && rawStatus >= 6) ||
-            isSuccess;
-          
-          if (isCompleted && isMounted) {
-            // Already completed, just set the status and stop
-            const normalizedStatus = {
-              ...initialStatus,
-              status: 'Completed',
-              message: initialStatus.Message || initialStatus.message || 'Deployment completed successfully',
-              githubRepoUrl: initialStatus.GitHubRepoUrl || initialStatus.githubRepoUrl || initialStatus.gitHubRepoUrl,
-              deploymentUrl: initialStatus.DeploymentUrl || initialStatus.deploymentUrl,
-              configFileUrl: initialStatus.ConfigFileUrl || initialStatus.configFileUrl,
-              projectId: initialStatus.ProjectId || initialStatus.projectId,
-              success: true,
-              progress: initialStatus.Progress || initialStatus.progress || 100,
-              currentStep: initialStatus.CurrentStep || initialStatus.currentStep || 'Completed',
-              mongoDeploymentId: initialStatus.MongoDeploymentId || initialStatus.mongoDeploymentId || mongoDeploymentId
-            };
-            setDeployment(normalizedStatus);
-            setLoading(false);
-            pollingStopped = true;
-            if (onStatusUpdate) {
-              onStatusUpdate(normalizedStatus);
-            }
-            return;
-          }
-        } catch (err) {
-          console.warn('Failed to get initial status:', err);
-        }
-
-        if (pollingStopped || !isMounted) return;
-
-        await pollDeployment(
-          projectId,
-          async (statusData) => {
-            if (!isMounted || pollingStopped) return;
-
-            // Normalize response format (handle both PascalCase and camelCase, and numeric status)
-            const rawStatus = statusData.Status || statusData.status;
-            let normalizedStatusValue = rawStatus;
-            
-            // Handle numeric status (6 = completed, 0-5 = in progress)
-            if (typeof rawStatus === 'number') {
-              if (rawStatus >= 6) {
-                normalizedStatusValue = 'Completed';
-              } else if (rawStatus < 0) {
-                normalizedStatusValue = 'Failed';
-              } else {
-                normalizedStatusValue = 'Processing';
-              }
-            }
-            
-            // Check success flag (handle both lowercase and uppercase)
-            const isSuccess = statusData.success === true || statusData.Success === true || 
-                            (statusData.success !== false && statusData.Success !== false && normalizedStatusValue === 'Completed');
-            
-            // Check if deployment is completed or failed - stop polling
-            const isCompleted = normalizedStatusValue === 'Completed' || isSuccess;
-            const isFailed = normalizedStatusValue === 'Failed';
-            
-            if (isCompleted || isFailed) {
-              pollingStopped = true;
-            }
-            
-            const normalizedStatus = {
-              ...statusData,
-              status: normalizedStatusValue,
-              message: statusData.Message || statusData.message || 'Processing...',
-              githubRepoUrl: statusData.GitHubRepoUrl || statusData.githubRepoUrl || statusData.gitHubRepoUrl,
-              deploymentUrl: statusData.DeploymentUrl || statusData.deploymentUrl,
-              configFileUrl: statusData.ConfigFileUrl || statusData.configFileUrl,
-              projectId: statusData.ProjectId || statusData.projectId,
-              success: isSuccess,
-              progress: statusData.Progress || statusData.progress || (isCompleted ? 100 : 0),
-              currentStep: statusData.CurrentStep || statusData.currentStep || 'Processing',
-              mongoDeploymentId: statusData.MongoDeploymentId || statusData.mongoDeploymentId || mongoDeploymentId
-            };
-            
-            // Update MongoDB deployment status if we have the ID
-            const deploymentId = normalizedStatus.mongoDeploymentId || mongoDeploymentId;
-            if (deploymentId && isMounted && !pollingStopped) {
-              try {
-                // Map unified deployment status to MongoDB status
-                let mongoStatus = 'processing';
-                if (normalizedStatus.status === 'Completed' || normalizedStatus.success || 
-                    (typeof rawStatus === 'number' && rawStatus >= 6)) {
-                  mongoStatus = 'completed';
-                } else if (normalizedStatus.status === 'Failed' || 
-                          (typeof rawStatus === 'number' && rawStatus < 0)) {
-                  mongoStatus = 'failed';
-                } else if (normalizedStatus.status === 'queued' || normalizedStatus.status === 'Queued') {
-                  mongoStatus = 'queued';
-                }
-                
-                await updateDeploymentStatus(deploymentId, mongoStatus);
-                
-                // Refresh MongoDB deployment data
-                const updatedMongoData = await getDeploymentById(deploymentId);
-                if (isMounted) {
-                  setMongoDeployment(updatedMongoData);
-                }
-              } catch (updateError) {
-                console.warn('Failed to update MongoDB deployment status:', updateError);
-              }
-            }
-            
-            if (isMounted) {
-              setDeployment(normalizedStatus);
-              setLoading(false);
-              if (onStatusUpdate) {
-                onStatusUpdate(normalizedStatus);
-              }
-            }
-          },
-          3000
-        );
       } catch (err) {
+        console.error('Failed to fetch deployment status:', err);
         if (isMounted) {
           setError('Failed to fetch deployment status');
-          console.error(err);
+        }
+      } finally {
+        if (isMounted) {
           setLoading(false);
         }
       }
-    };
+    } catch (err) {
+      console.error('Error in fetchStatus:', err);
+      if (isMounted) {
+        setError('An error occurred while fetching deployment status');
+        setLoading(false);
+      }
+    }
+  };
 
-    startPolling();
+  // Only fetch status if we haven't already loaded it
+  if (!deployment) {
+    fetchStatus();
+  }
 
-    // Cleanup function to stop polling if component unmounts
-    return () => {
-      isMounted = false;
-      pollingStopped = true;
-    };
-  }, [projectId, mongoDeploymentId, onStatusUpdate]);
+  return () => {
+    isMounted = false;
+  };
+}, [projectId, mongoDeploymentIdProp]); // Removed onStatusUpdate from dependencies
+
+  // useEffect(() => {
+  //   if (!projectId) {
+  //     setLoading(false);
+  //     return;
+  //   }
+
+  //   let isMounted = true;
+  //   let pollingStopped = false;
+  //   let pollController = null;
+
+  //   const startPolling = async () => {
+  //     try {
+  //       setLoading(true);
+        
+  //       // Get MongoDB deployment ID from props or use the one passed in
+  //       const mongoDeploymentId = mongoDeploymentIdProp || mongoDeploymentId;
+        
+  //       // Check initial status before starting polling
+  //       try {
+  //         const initialStatus = await getDeploymentStatus(projectId);
+  //         const rawStatus = initialStatus.Status || initialStatus.status;
+  //         const isSuccess = initialStatus.success === true || initialStatus.Success === true;
+  //         const isCompleted = 
+  //           rawStatus === 'Completed' || 
+  //           rawStatus === 'completed' || 
+  //           rawStatus === 'COMPLETED' ||
+  //           (typeof rawStatus === 'number' && rawStatus >= 6) ||
+  //           isSuccess;
+          
+  //         if (isCompleted && isMounted) {
+  //           // Already completed, just set the status and stop
+  //           const normalizedStatus = {
+  //             ...initialStatus,
+  //             status: 'Completed',
+  //             message: initialStatus.Message || initialStatus.message || 'Deployment completed',
+  //             githubRepoUrl: initialStatus.GitHubRepoUrl || initialStatus.githubRepoUrl,
+  //             deploymentUrl: initialStatus.DeploymentUrl || initialStatus.deploymentUrl,
+  //             configFileUrl: initialStatus.ConfigFileUrl || initialStatus.configFileUrl,
+  //             projectId: initialStatus.ProjectId || initialStatus.projectId,
+  //             success: true,
+  //             progress: initialStatus.Progress || initialStatus.progress || 100,
+  //             currentStep: initialStatus.CurrentStep || initialStatus.currentStep || 'Completed',
+  //             mongoDeploymentId: initialStatus.MongoDeploymentId || initialStatus.mongoDeploymentId || mongoDeploymentId
+  //           };
+  //           setDeployment(normalizedStatus);
+  //           setLoading(false);
+  //           pollingStopped = true;
+  //           return;
+  //         }
+  //       } catch (err) {
+  //         console.warn('Failed to get initial status:', err);
+  //       }
+
+  //       if (pollingStopped || !isMounted) return;
+
+  //       // Start polling
+  //       const { promise, stop } = await pollDeployment(
+  //         projectId,
+  //         async (statusData) => {
+  //           // Store the controller reference
+  //           pollController = { stop };
+  //           if (!isMounted || pollingStopped) return;
+
+  //           // Normalize response format (handle both PascalCase and camelCase, and numeric status)
+  //           const rawStatus = statusData.Status || statusData.status;
+  //           let normalizedStatusValue = rawStatus;
+            
+  //           // Handle numeric status (6 = completed, 0-5 = in progress)
+  //           if (typeof rawStatus === 'number') {
+  //             if (rawStatus >= 6) {
+  //               normalizedStatusValue = 'Completed';
+  //             } else if (rawStatus < 0) {
+  //               normalizedStatusValue = 'Failed';
+  //             } else {
+  //               normalizedStatusValue = 'Processing';
+  //             }
+  //           }
+            
+  //           // Check success flag (handle both lowercase and uppercase)
+  //           const isSuccess = statusData.success === true || statusData.Success === true || 
+  //                           (statusData.success !== false && statusData.Success !== false && normalizedStatusValue === 'Completed');
+            
+  //           // Check if deployment is completed or failed - stop polling
+  //           const isCompleted = normalizedStatusValue === 'Completed' || isSuccess;
+  //           const isFailed = normalizedStatusValue === 'Failed';
+            
+  //           // Also check currentStep for completion
+  //           const currentStep = statusData.currentStep || statusData.CurrentStep;
+  //           const isCompletedByStep = currentStep === 'Completed' || currentStep === 'completed';
+            
+  //           const normalizedStatus = {
+  //             ...statusData,
+  //             status: normalizedStatusValue,
+  //             message: statusData.Message || statusData.message || 'Processing...',
+  //             githubRepoUrl: statusData.GitHubRepoUrl || statusData.githubRepoUrl || statusData.gitHubRepoUrl,
+  //             deploymentUrl: statusData.DeploymentUrl || statusData.deploymentUrl,
+  //             configFileUrl: statusData.ConfigFileUrl || statusData.configFileUrl,
+  //             projectId: statusData.ProjectId || statusData.projectId,
+  //             success: isSuccess,
+  //             progress: statusData.Progress || statusData.progress || (isCompleted ? 100 : 0),
+  //             currentStep: statusData.CurrentStep || statusData.currentStep || 'Processing',
+  //             mongoDeploymentId: statusData.MongoDeploymentId || statusData.mongoDeploymentId || mongoDeploymentId
+  //           };
+            
+  //           // Update MongoDB deployment status if we have the ID (only if not already completed)
+  //           const deploymentId = normalizedStatus.mongoDeploymentId || mongoDeploymentId;
+  //           if (deploymentId && isMounted && !pollingStopped && (isCompleted || isFailed || isCompletedByStep)) {
+  //             try {
+  //               // Map unified deployment status to MongoDB status
+  //               let mongoStatus = 'processing';
+  //               if (normalizedStatus.status === 'Completed' || normalizedStatus.success || 
+  //                   (typeof rawStatus === 'number' && rawStatus >= 6) || isCompletedByStep) {
+  //                 mongoStatus = 'completed';
+  //               } else if (normalizedStatus.status === 'Failed' || 
+  //                         (typeof rawStatus === 'number' && rawStatus < 0)) {
+  //                 mongoStatus = 'failed';
+  //               } else if (normalizedStatus.status === 'queued' || normalizedStatus.status === 'Queued') {
+  //                 mongoStatus = 'queued';
+  //               }
+                
+  //               await updateDeploymentStatus(deploymentId, mongoStatus);
+                
+  //               // Refresh MongoDB deployment data
+  //               const updatedMongoData = await getDeploymentById(deploymentId);
+  //               if (isMounted) {
+  //                 setMongoDeployment(updatedMongoData);
+  //               }
+  //             } catch (updateError) {
+  //               console.warn('Failed to update MongoDB deployment status:', updateError);
+  //             }
+  //           }
+            
+  //           if (isMounted) {
+  //             setDeployment(normalizedStatus);
+  //             setLoading(false);
+  //           }
+            
+  //           // Call onStatusUpdate if provided
+  //           if (onStatusUpdate) {
+  //             onStatusUpdate(normalizedStatus);
+  //           }
+            
+  //           // Stop polling if completed or failed
+  //           if ((isCompleted || isFailed || isCompletedByStep) && isMounted) {
+  //             pollingStopped = true;
+  //             if (stop) {
+  //               stop();
+  //             }
+  //           }
+  //         },
+  //         3000
+  //       );
+        
+  //       // Handle any errors from the polling promise
+  //       if (promise && typeof promise.catch === 'function') {
+  //         promise.catch(err => {
+  //           if (isMounted && !pollingStopped) {
+  //             setError('Failed to fetch deployment status');
+  //             console.error('Polling error:', err);
+  //             setLoading(false);
+  //           }
+  //         });
+  //       }
+        
+  //     } catch (err) {
+  //       if (isMounted) {
+  //         setError('Failed to start deployment status polling');
+  //         console.error(err);
+  //         setLoading(false);
+  //       }
+  //     }
+  //   };
+
+  //   startPolling();
+
+  //   // Cleanup function to stop polling if component unmounts
+  //   return () => {
+  //     isMounted = false;
+  //     pollingStopped = true;
+  //     if (pollController && pollController.stop) {
+  //       pollController.stop();
+  //     }
+  //   };
+  // }, [projectId, mongoDeploymentIdProp, onStatusUpdate]);
 
   const getStatusIcon = (deploymentStatus) => {
     switch (deploymentStatus) {
@@ -324,7 +419,7 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
           )}
 
           {(deployment.status === 'Completed' || deployment.success || mongoDeployment) && (
-            <Card className="mb-4">
+            <Card className="mb-4 ">
               <Card.Body>
                 <h5 className="mb-3">Deployment Information</h5>
                 
