@@ -51,14 +51,14 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
             const normalizedStatus = {
               ...initialStatus,
               status: 'Completed',
-              message: initialStatus.Message || initialStatus.message,
-              githubRepoUrl: initialStatus.GitHubRepoUrl || initialStatus.githubRepoUrl,
+              message: initialStatus.Message || initialStatus.message || 'Deployment completed successfully',
+              githubRepoUrl: initialStatus.GitHubRepoUrl || initialStatus.githubRepoUrl || initialStatus.gitHubRepoUrl,
               deploymentUrl: initialStatus.DeploymentUrl || initialStatus.deploymentUrl,
               configFileUrl: initialStatus.ConfigFileUrl || initialStatus.configFileUrl,
               projectId: initialStatus.ProjectId || initialStatus.projectId,
               success: true,
               progress: initialStatus.Progress || initialStatus.progress || 100,
-              currentStep: initialStatus.CurrentStep || initialStatus.currentStep,
+              currentStep: initialStatus.CurrentStep || initialStatus.currentStep || 'Completed',
               mongoDeploymentId: initialStatus.MongoDeploymentId || initialStatus.mongoDeploymentId || mongoDeploymentId
             };
             setDeployment(normalizedStatus);
@@ -77,11 +77,11 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
 
         await pollDeployment(
           projectId,
-          async (status) => {
+          async (statusData) => {
             if (!isMounted || pollingStopped) return;
 
             // Normalize response format (handle both PascalCase and camelCase, and numeric status)
-            const rawStatus = status.Status || status.status;
+            const rawStatus = statusData.Status || statusData.status;
             let normalizedStatusValue = rawStatus;
             
             // Handle numeric status (6 = completed, 0-5 = in progress)
@@ -96,8 +96,8 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
             }
             
             // Check success flag (handle both lowercase and uppercase)
-            const isSuccess = status.success === true || status.Success === true || 
-                            (status.success !== false && status.Success !== false && normalizedStatusValue === 'Completed');
+            const isSuccess = statusData.success === true || statusData.Success === true || 
+                            (statusData.success !== false && statusData.Success !== false && normalizedStatusValue === 'Completed');
             
             // Check if deployment is completed or failed - stop polling
             const isCompleted = normalizedStatusValue === 'Completed' || isSuccess;
@@ -108,17 +108,17 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
             }
             
             const normalizedStatus = {
-              ...status,
+              ...statusData,
               status: normalizedStatusValue,
-              message: status.Message || status.message,
-              githubRepoUrl: status.GitHubRepoUrl || status.githubRepoUrl,
-              deploymentUrl: status.DeploymentUrl || status.deploymentUrl,
-              configFileUrl: status.ConfigFileUrl || status.configFileUrl,
-              projectId: status.ProjectId || status.projectId,
+              message: statusData.Message || statusData.message || 'Processing...',
+              githubRepoUrl: statusData.GitHubRepoUrl || statusData.githubRepoUrl || statusData.gitHubRepoUrl,
+              deploymentUrl: statusData.DeploymentUrl || statusData.deploymentUrl,
+              configFileUrl: statusData.ConfigFileUrl || statusData.configFileUrl,
+              projectId: statusData.ProjectId || statusData.projectId,
               success: isSuccess,
-              progress: status.Progress || status.progress || (isCompleted ? 100 : 0),
-              currentStep: status.CurrentStep || status.currentStep,
-              mongoDeploymentId: status.MongoDeploymentId || status.mongoDeploymentId || mongoDeploymentId
+              progress: statusData.Progress || statusData.progress || (isCompleted ? 100 : 0),
+              currentStep: statusData.CurrentStep || statusData.currentStep || 'Processing',
+              mongoDeploymentId: statusData.MongoDeploymentId || statusData.mongoDeploymentId || mongoDeploymentId
             };
             
             // Update MongoDB deployment status if we have the ID
@@ -177,8 +177,8 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
     };
   }, [projectId, mongoDeploymentId, onStatusUpdate]);
 
-  const getStatusIcon = (status) => {
-    switch (status) {
+  const getStatusIcon = (deploymentStatus) => {
+    switch (deploymentStatus) {
       case 'Completed':
         return <FaCheckCircle size={32} className="text-success" />;
       case 'Failed':
@@ -188,8 +188,8 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
+  const getStatusColor = (deploymentStatus) => {
+    switch (deploymentStatus) {
       case 'Completed':
         return 'success';
       case 'Failed':
@@ -421,4 +421,3 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
 };
 
 export default DeploymentMonitorEmbedded;
-
