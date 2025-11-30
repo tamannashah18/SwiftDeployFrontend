@@ -23,7 +23,7 @@ export const getProjectById = async (projectId) => {
     const response = await apiClient.get(`/projects/${projectId}`);
     return response.data;
   } catch (error) {
-    throw error.response?.data || error;
+    throw error.response?.data || error; 
   }
 };
 

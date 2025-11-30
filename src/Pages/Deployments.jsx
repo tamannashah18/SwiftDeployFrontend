@@ -10,7 +10,7 @@ function Deployments() {
   const [error, setError] = useState(null);
 
   const navigate = useNavigate();
-
+  
   useEffect(() => {
     fetchDeployments();
   }, []);
@@ -18,12 +18,17 @@ function Deployments() {
   const fetchDeployments = async () => {
     try {
       setLoading(true);
-      const data = await getAllDeployments();
+      setError(null);
+      const user = JSON.parse(localStorage.getItem('user'));
+      const userId = user?.id;
+      const data = await getAllDeployments(userId);
       console.log('Deployments data:', data);
+      // Ensure data is an array
       setDeployments(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Failed to fetch deployments:', err);
       setError(err.message || 'Failed to load deployments');
+      setDeployments([]);
     } finally {
       setLoading(false);
     }
@@ -74,6 +79,7 @@ function Deployments() {
           ) : (
             deployments.map((deployment) => {
               const deploymentId = getDeploymentId(deployment);
+              const repoName = deployment.repoId ? deployment.repoId.split('/').pop() : 'Unknown Repository';
               return (
                 <div
                   className="project-card"
@@ -82,14 +88,14 @@ function Deployments() {
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="project-title">
-                    {deployment.serviceId || deployment.repoId || 'Deployment'}
+                    {repoName}
                   </div>
                   <div className="project-desc">
                     {deployment.repoId || 'No repository'}
                   </div>
                   <div className="project-info-row">
                     <span className={`badge ${getStatusBadge(deployment.status)}`}>
-                      {deployment.status || 'Unknown'}
+                      {deployment.status ? deployment.status.charAt(0).toUpperCase() + deployment.status.slice(1) : 'Unknown'}
                     </span>
                     <span className="badge bg-info">
                       {deployment.deployedAt 
@@ -98,8 +104,10 @@ function Deployments() {
                     </span>
                   </div>
                   {deployment.serviceUrl && (
-                    <div className="project-info-row" style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-                      <span style={{ color: '#d1caf6' }}>Service URL</span>
+                    <div className="project-info-row" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                      <span style={{ color: '#d1caf6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {deployment.serviceUrl}
+                      </span>
                     </div>
                   )}
                 </div>

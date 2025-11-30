@@ -32,12 +32,19 @@ export const getDeploymentStatus = async (projectId) => {
 };
 
 export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
+  let shouldStop = false;
+  let pollTimeout;
+
   const poll = async () => {
+    if (shouldStop) {
+      if (pollTimeout) clearTimeout(pollTimeout);
+      return null;
+    }
+
     try {
       const statusData = await getDeploymentStatus(projectId);
-      onUpdate(statusData);
 
-      // Check if deployment is completed or failed
+      // Check if deployment is completed or failed BEFORE calling onUpdate
       // Handle both numeric status (6 = Completed) and string status
       const rawStatus = statusData.status || statusData.Status;
       const currentStep = statusData.currentStep || statusData.CurrentStep;
@@ -62,18 +69,58 @@ export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
         currentStep === 'Failed' ||
         currentStep === 'failed';
 
+      // Call onUpdate with the status data
+      if (onUpdate) {
+        await onUpdate(statusData);
+      }
+
+      // If completed or failed, stop polling
       if (isCompleted || isFailed) {
+        shouldStop = true;
         return statusData;
       }
 
-      await new Promise(resolve => setTimeout(resolve, interval));
-      return poll();
+      // Only continue polling if not stopped
+      if (!shouldStop) {
+        // Clear any existing timeout to prevent multiple timeouts
+        if (pollTimeout) clearTimeout(pollTimeout);
+        
+        // Create a promise that will resolve after the interval
+        await new Promise((resolve) => {
+          pollTimeout = setTimeout(async () => {
+            if (!shouldStop) {
+              try {
+                await poll();
+              } catch (err) {
+                console.error('Error in polling:', err);
+              }
+            }
+            resolve();
+          }, interval);
+        });
+      }
+
+      return statusData;
     } catch (error) {
+      console.error('Error in deployment polling:', error);
+      shouldStop = true;
+      if (pollTimeout) clearTimeout(pollTimeout);
       throw error;
     }
   };
 
-  return poll();
+  // Add cleanup function to the returned promise
+  const pollPromise = poll();
+  pollPromise.catch(() => {}); // Prevent unhandled promise rejection
+  
+  // Return an object with the promise and a stop function
+  return {
+    promise: pollPromise,
+    stop: () => {
+      shouldStop = true;
+      if (pollTimeout) clearTimeout(pollTimeout);
+    }
+  };
 };
 
 export const getUserProjects = async (userId) => {
