@@ -6,10 +6,11 @@ import '../css/ConfigurationForm.css';
 const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack }) => {
   const [config, setConfig] = useState({
     projectName: initialConfig.projectName || '',
-    buildCommand: initialConfig.buildCommand || '',
-    outputDirectory: initialConfig.outputDirectory || 'dist',
-    installCommand: initialConfig.installCommand || 'npm install',
-    nodeVersion: initialConfig.nodeVersion || '18',
+    buildCommand: initialConfig.buildCommand !== undefined ? initialConfig.buildCommand : '',
+    // For static sites, these can be empty - only use defaults if not explicitly set
+    outputDirectory: initialConfig.outputDirectory !== undefined ? initialConfig.outputDirectory : 'dist',
+    installCommand: initialConfig.installCommand !== undefined ? initialConfig.installCommand : 'npm install',
+    nodeVersion: initialConfig.nodeVersion !== undefined ? initialConfig.nodeVersion : '18',
     domain: initialConfig.domain || '',
     framework: initialConfig.framework || 'static',
     enableHttps: initialConfig.enableHttps !== undefined ? initialConfig.enableHttps : true,

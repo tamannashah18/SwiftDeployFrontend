@@ -489,10 +489,19 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
             initialConfig={{
               projectName: project.projectName || '',
               framework: getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework),
-              buildCommand: detectedTech.buildTool ? `${detectedTech.packageManager} run build` : '',
-              installCommand: detectedTech.packageManager ? `${detectedTech.packageManager} install` : 'npm install',
-              outputDirectory: getDefaultOutputDir(detectedTech.frontendFramework || detectedTech.framework, detectedTech.buildTool),
-              nodeVersion: '18'
+              // For static sites, leave all build settings empty
+              buildCommand: detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static' 
+                ? '' 
+                : (detectedTech.buildTool ? `${detectedTech.packageManager} run build` : ''),
+              installCommand: detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
+                ? ''
+                : (detectedTech.packageManager ? `${detectedTech.packageManager} install` : ''),
+              outputDirectory: detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
+                ? ''
+                : getDefaultOutputDir(detectedTech.frontendFramework || detectedTech.framework, detectedTech.buildTool),
+              nodeVersion: detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
+                ? ''
+                : '18'
             }}
             onBack={() => setStep('select')}
           />
