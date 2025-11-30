@@ -37,7 +37,32 @@ export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
       const statusData = await getDeploymentStatus(projectId);
       onUpdate(statusData);
 
-      if (statusData.status === 'Completed' || statusData.status === 'Failed') {
+      // Check if deployment is completed or failed
+      // Handle both numeric status (6 = Completed) and string status
+      const rawStatus = statusData.status || statusData.Status;
+      const currentStep = statusData.currentStep || statusData.CurrentStep;
+      const isSuccess = statusData.success === true || statusData.Success === true;
+      
+      // Check completion conditions
+      const isCompleted = 
+        rawStatus === 'Completed' || 
+        rawStatus === 'completed' || 
+        rawStatus === 'COMPLETED' ||
+        (typeof rawStatus === 'number' && rawStatus >= 6) ||
+        currentStep === 'Completed' ||
+        currentStep === 'completed' ||
+        isSuccess;
+      
+      // Check failure conditions
+      const isFailed = 
+        rawStatus === 'Failed' || 
+        rawStatus === 'failed' || 
+        rawStatus === 'FAILED' ||
+        (typeof rawStatus === 'number' && rawStatus < 0) ||
+        currentStep === 'Failed' ||
+        currentStep === 'failed';
+
+      if (isCompleted || isFailed) {
         return statusData;
       }
 
@@ -101,9 +126,12 @@ export const createDeployment = async (deploymentData) => {
   }
 };
 
-export const getAllDeployments = async () => {
+export const getAllDeployments = async (userId) => {
   try {
-    const response = await apiClient.get('/deployments');
+    const url = userId
+      ? `/deployments/user/${userId}`
+      : '/deployments';
+    const response = await apiClient.get(url);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -121,7 +149,7 @@ export const getDeploymentById = async (deploymentId) => {
 
 export const getDeploymentsByRepoId = async (repoId) => {
   try {
-    const response = await apiClient.get(`/deployments/repo/${repoId}`);
+    const response = await apiClient.post(`/deployments/repo`,{repoId:repoId});
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
