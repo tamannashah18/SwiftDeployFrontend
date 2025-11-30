@@ -211,6 +211,15 @@ const DeploymentMonitorEmbedded = ({ projectId, mongoDeploymentId, onStatusUpdat
 
   const getCurrentStepIndex = () => {
     if (!deployment) return 0;
+    // If deployment is successful/completed, all steps should show as completed
+    if (deployment.success || deployment.status === 'Completed') {
+      return deploymentSteps.length; // Return length so all steps show as completed (no spinner)
+    }
+    if (deployment.status === 'Failed') {
+      // For failed deployments, show up to the step where it failed
+      const stepIndex = deploymentSteps.indexOf(deployment.currentStep);
+      return stepIndex >= 0 ? stepIndex : deploymentSteps.length - 2;
+    }
     const stepIndex = deploymentSteps.indexOf(deployment.status);
     return stepIndex >= 0 ? stepIndex : 0;
   };
