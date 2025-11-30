@@ -100,11 +100,44 @@ export const deleteProject = async (projectId) => {
   }
 };
 
-export const regenerateConfig = async (projectId, config) => {
+export const regenerateConfig = async (projectId, config, projectName = null) => {
   try {
-    const response = await apiClient.post(`/unifieddeployment/regenerate-config/${projectId}`, {
-      config,
-    });
+    // Map projectType string to number if needed
+    let projectType = 0;
+    if (config?.projectType !== undefined) {
+      if (typeof config.projectType === 'string') {
+        projectType = config.projectType === 'Static' ? 0 : 1;
+      } else {
+        projectType = config.projectType;
+      }
+    } else if (config?.ProjectType !== undefined) {
+      if (typeof config.ProjectType === 'string') {
+        projectType = config.ProjectType === 'Static' ? 0 : 1;
+      } else {
+        projectType = config.ProjectType;
+      }
+    }
+
+    // Normalize config to ensure it's in the correct format (camelCase)
+    // Handle both PascalCase and camelCase properties
+    const normalizedConfig = {
+      projectName: projectName || config?.projectName || config?.ProjectName || 'your-project-name',
+      buildCommand: config?.buildCommand || config?.BuildCommand || '',
+      outputDirectory: config?.outputDirectory || config?.OutputDirectory || '.',
+      installCommand: config?.installCommand || config?.InstallCommand || '',
+      nodeVersion: config?.nodeVersion || config?.NodeVersion || '',
+      domain: config?.domain || config?.Domain || '',
+      environmentVariables: config?.environmentVariables || config?.EnvironmentVariables || {},
+      redirects: config?.redirects || config?.Redirects || [],
+      headers: config?.headers || config?.Headers || [],
+      teamId: config?.teamId || config?.TeamId || '',
+      enableHttps: config?.enableHttps !== undefined ? config.enableHttps : (config?.EnableHttps !== undefined ? config.EnableHttps : true),
+      framework: config?.framework || config?.Framework || '',
+      projectType: projectType,
+    };
+
+    // Send the config directly, not wrapped in a config object
+    const response = await apiClient.post(`/unifieddeployment/regenerate-config/${projectId}`, normalizedConfig);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -140,7 +173,9 @@ export const getDeploymentById = async (deploymentId) => {
 
 export const getDeploymentsByRepoId = async (repoId) => {
   try {
-    const response = await apiClient.get(`/deployments/repo/${repoId}`);
+    const response = await apiClient.post('/deployments/repo', {
+      repoId: repoId
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

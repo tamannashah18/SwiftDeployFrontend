@@ -22,6 +22,8 @@ import Dashboard from './Pages/Dashboard';
 import NewProject from './Pages/NewProject';
 import DeploymentMonitor from './Pages/DeploymentMonitor';
 import ProjectDetail from './Pages/ProjectDetail';
+import Deployments from './Pages/Deployments';
+import DeploymentDetail from './Pages/DeploymentDetail';
  
 function App() {
   const AuthCallbackWrapper = () => {
@@ -42,7 +44,9 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/new-project" element={<NewProject />} />
+          <Route path="/deployments" element={<Deployments />} />
           <Route path="/deployment/:projectId" element={<DeploymentMonitor />} />
+          <Route path="/deployment-detail/:id" element={<DeploymentDetail />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/complete-profile/:userId" element={<CompleteProfile />} />
           <Route path="/register" element={<RegisterUser />} />

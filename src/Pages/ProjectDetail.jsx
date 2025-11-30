@@ -103,7 +103,7 @@ const ProjectDetail = () => {
 
   const handleRegenerateConfig = async () => {
     try {
-      await regenerateConfig(id, project.config);
+      await regenerateConfig(id, project.config, project.projectName);
       alert('Configuration regenerated successfully!');
       fetchProjectDetails();
     } catch (err) {
