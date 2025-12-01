@@ -1,6 +1,47 @@
+/* Dashboard Page Container */
+.dashboard-page {
+  background-color: #1a0033;
+  overflow-x: hidden;
+}
+
+/* Dashboard Content - Handles sidebar offset */
+.dashboard-content {
+  margin-left: 0;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  padding-bottom: 5rem; /* Space for mobile bottom nav */
+  min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Typography */
+.dashboard-title {
+  color: #ffffff;
+  font-size: 1.5rem;
+  word-wrap: break-word;
+}
+
+.dashboard-subtitle {
+  color: #b8a3d9;
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+.section-title {
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.text-muted-custom {
+  color: #b8a3d9 !important;
+}
+
 /* Quick Action Cards */
 .quick-action-card {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid #6c3fb5;
   border-radius: 12px;
   background-color: #2d1b4e;
@@ -8,74 +49,263 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  cursor: pointer;
+  min-height: 140px;
 }
 
-.quick-action-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+.quick-action-card:hover,
+.quick-action-card:focus {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(108, 63, 181, 0.4);
   border-color: #b89dff;
+  outline: none;
 }
 
 .quick-action-card .card-body {
-  padding: 1.5rem;
+  padding: 1.25rem;
   text-align: center;
 }
 
 .quick-action-card .card-title {
   color: #ffffff;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
   font-weight: 500;
 }
 
 .quick-action-card .card-text {
   color: #b8a3d9;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   margin-bottom: 0;
 }
 
 .quick-action-card svg {
-  margin-bottom: 0.75rem;
   color: #b89dff;
 }
 
-/* Responsive adjustments */
-@media (max-width: 767.98px) {
-  .quick-action-card {
-    margin-bottom: 1rem;
+.quick-action-card .spinner-border {
+  width: 28px;
+  height: 28px;
+  border-width: 0.2em;
+  color: #b89dff;
+  margin-bottom: 0.5rem;
+}
+
+/* Platform Cards */
+.platform-card {
+  background-color: #2d1b4e;
+  border: 1px solid #6c3fb5;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.platform-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(108, 63, 181, 0.3);
+  border-color: #8b5cf6;
+}
+
+.platform-card .card-body {
+  padding: 1.25rem;
+}
+
+.platform-card .card-title {
+  font-size: 1rem;
+}
+
+/* Project Items */
+.projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.project-item {
+  background-color: #2d1b4e;
+  border: 1px solid #6c3fb5;
+  border-radius: 8px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.project-item:hover,
+.project-item:focus {
+  background-color: #3d2660;
+  border-color: #8b5cf6;
+  outline: none;
+}
+
+.project-info {
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.project-info p {
+  max-width: 100%;
+}
+
+.project-status {
+  flex-shrink: 0;
+}
+
+/* ========================================
+   RESPONSIVE BREAKPOINTS
+   ======================================== */
+
+/* Extra Small devices (phones, less than 576px) */
+@media (max-width: 575.98px) {
+  .dashboard-content {
+    padding-bottom: 6rem;
   }
-  
-  .quick-action-card:last-child {
-    margin-bottom: 0;
+
+  .dashboard-title {
+    font-size: 1.25rem;
+  }
+
+  .section-title {
+    font-size: 1rem;
+  }
+
+  .quick-action-card {
+    min-height: 120px;
+  }
+
+  .quick-action-card .card-body {
+    padding: 1rem;
+  }
+
+  .platform-card .card-body {
+    padding: 1rem;
+  }
+
+  .project-item {
+    padding: 0.875rem;
   }
 }
 
-/* Ensure consistent height on all screen sizes */
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .dashboard-content {
+    padding-bottom: 6rem;
+  }
+
+  .dashboard-title {
+    font-size: 1.5rem;
+  }
+
+  .quick-action-card {
+    min-height: 150px;
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
 @media (min-width: 768px) {
+  .dashboard-content {
+    margin-left: 5rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-bottom: 2rem;
+    width: calc(100% - 5rem);
+  }
+
+  .dashboard-title {
+    font-size: 1.75rem;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+  }
+
+  .quick-action-card {
+    min-height: 160px;
+  }
+
+  .quick-action-card .card-body {
+    padding: 1.5rem;
+  }
+
+  .quick-action-card .card-title {
+    font-size: 1.1rem;
+  }
+
+  .quick-action-card .card-text {
+    font-size: 0.875rem;
+  }
+
+  .platform-card .card-body {
+    padding: 1.25rem;
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .dashboard-title {
+    font-size: 2rem;
+  }
+
+  .dashboard-subtitle {
+    font-size: 1rem;
+  }
+
   .quick-action-card {
     min-height: 180px;
   }
+
+  .platform-card .card-body {
+    padding: 1.5rem;
+  }
 }
 
-/* Hover effects for better interactivity */
-.quick-action-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+  .dashboard-title {
+    font-size: 2.25rem;
+  }
+
+  .quick-action-card .card-body {
+    padding: 1.75rem;
+  }
 }
 
-.quick-action-card:hover {
-  transform: translateY(-5px) scale(1.02);
-  z-index: 1;
+/* Extra extra large devices (1400px and up) */
+@media (min-width: 1400px) {
+  .container-fluid {
+    max-width: 1600px;
+  }
 }
 
-/* Animation for the loading spinner */
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Ensure content doesn't overflow */
+.dashboard-page * {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-.quick-action-card .spinner-border {
-  animation: spin 0.8s linear infinite;
-  display: inline-block;
-  width: 36px;
-  height: 36px;
-  border-width: 0.2em;
+/* Button styles */
+.btn-outline-primary {
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.btn-outline-primary:hover {
+  background-color: #8b5cf6;
+  border-color: #8b5cf6;
+  color: #ffffff;
+}
+
+.btn-outline-danger:disabled {
+  border-color: #6b7280;
+  color: #6b7280;
+  opacity: 0.6;
+}
+
+/* Badge refinements */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.35em 0.65em;
 }
