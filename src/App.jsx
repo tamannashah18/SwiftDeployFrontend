@@ -34,10 +34,9 @@ function App() {
     <div className="App d-flex flex-column min-vh-100">
       <main className="flex-grow-1">
         <Routes>
-          <Route path="/" element={<NavigationBar />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/*" element={<NotFound />} />
           <Route path="/header" element={<Header />} />
-          <Route path="/landing" element={<Landing />} />
           <Route path="/auth-callback" element={<AuthCallbackWrapper />} />
           <Route path="/netlify-callback" element={<NetlifyCallback />} />
           <Route path="/logs" element={<Logs a="" b={0}/>} />

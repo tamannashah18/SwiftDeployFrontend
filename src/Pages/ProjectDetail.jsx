@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
 import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash } from 'react-icons/fa';
-import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId } from '../api/deployments';
+import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
 import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
@@ -20,6 +20,7 @@ const ProjectDetail = () => {
   const [deploymentInfo, setDeploymentInfo] = useState(null);
   const [allDeployments, setAllDeployments] = useState([]);
   const [loadingDeployments, setLoadingDeployments] = useState(false);
+  const [latestDeployment, setLatestDeployment] = useState(null);
 
   useEffect(() => {
     fetchProjectDetails();
@@ -66,6 +67,20 @@ const ProjectDetail = () => {
 
     fetchDeployments();
   }, [activeTab, project?.repoId]);
+
+  useEffect(() => {
+    const fetchLatestDeployment = async () => {
+      if (project?.repoId) {
+        try {
+          const data = await getLatestDeployment(project.repoId);
+          setLatestDeployment(data);
+        } catch (err) {
+          console.warn('Failed to fetch latest deployment:', err);
+        }
+      }
+    };
+    fetchLatestDeployment();
+  }, [project?.repoId]);
 
   useEffect(() => {
     const shouldOpenDeployModal = localStorage.getItem('open_deploy_modal_netlify');
@@ -215,23 +230,25 @@ const ProjectDetail = () => {
                         <span className="info-label-enhanced">Platform</span>
                       </div>
                       <div className="info-value-enhanced">
-                        {project.platform === 'netlify' ? 'Netlify' :
-                         project.platform === 'vercel' ? 'Vercel' :
-                         project.platform === 'cloudflare' ? 'Cloudflare' :
-                         project.platform || 'N/A'}
+                        {latestDeployment?.platform === 'netlify' ? 'Netlify' :
+                         latestDeployment?.platform === 'vercel' ? 'Vercel' :
+                         latestDeployment?.platform === 'cloudflare' ? 'Cloudflare' :
+                         latestDeployment?.platform || project.platform || 'N/A'}
                       </div>
                     </div>
                     <div className="info-item-enhanced">
                       <div className="info-icon-label">
                         <div className="status-indicator" style={{
-                          backgroundColor: project.status === 'Completed' ? '#10b981' :
-                                         project.status === 'Failed' ? '#ef4444' : '#f59e0b'
+                          backgroundColor: (latestDeployment?.status || project.status) === 'Completed' ? '#10b981' :
+                                         (latestDeployment?.status || project.status) === 'completed' ? '#10b981' :
+                                         (latestDeployment?.status || project.status) === 'Failed' ? '#ef4444' :
+                                         (latestDeployment?.status || project.status) === 'failed' ? '#ef4444' : '#f59e0b'
                         }}></div>
                         <span className="info-label-enhanced">Status</span>
                       </div>
                       <div>
-                        <Badge bg={getStatusBadge(project.status)} className="status-badge-enhanced">
-                          {project.status}
+                        <Badge bg={getStatusBadge(latestDeployment?.status || project.status)} className="status-badge-enhanced">
+                          {latestDeployment?.status || project.status}
                         </Badge>
                       </div>
                     </div>
@@ -246,7 +263,11 @@ const ProjectDetail = () => {
                         <span className="info-label-enhanced">Created</span>
                       </div>
                       <div className="info-value-enhanced">
-                        {project.createdAt ? new Date(project.createdAt).toLocaleDateString('en-US', {
+                        {latestDeployment?.deployedAt ? new Date(latestDeployment.deployedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        }) : project.createdAt ? new Date(project.createdAt).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'
@@ -262,7 +283,13 @@ const ProjectDetail = () => {
                         <span className="info-label-enhanced">Last Updated</span>
                       </div>
                       <div className="info-value-enhanced">
-                        {project.updatedAt ? new Date(project.updatedAt).toLocaleDateString('en-US', {
+                        {latestDeployment?.deployedAt ? new Date(latestDeployment.deployedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) : project.updatedAt ? new Date(project.updatedAt).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
