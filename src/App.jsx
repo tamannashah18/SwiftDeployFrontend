@@ -24,6 +24,7 @@ import DeploymentMonitor from './Pages/DeploymentMonitor';
 import ProjectDetail from './Pages/ProjectDetail';
 import Deployments from './Pages/Deployments';
 import DeploymentDetail from './Pages/DeploymentDetail';
+import HelpSupport from './Pages/HelpSupport';
  
 function App() {
   const AuthCallbackWrapper = () => {
@@ -51,6 +52,7 @@ function App() {
           <Route path="/register" element={<RegisterUser />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/help-support" element={<HelpSupport />} />
 
 
         </Routes>

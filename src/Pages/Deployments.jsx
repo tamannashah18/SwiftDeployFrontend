@@ -3,6 +3,8 @@ import "../css/Projects.css";
 import { NavigationBar } from "../Components/NavigationBar";
 import { useNavigate } from "react-router-dom";
 import { getAllDeployments } from "../api/deployments";
+import { FaGithub, FaCloudflare, FaExternalLinkAlt } from 'react-icons/fa';
+import { SiNetlify, SiVercel } from 'react-icons/si';
 
 function Deployments() {
   const [deployments, setDeployments] = useState([]);
@@ -47,6 +49,25 @@ function Deployments() {
     return deployment.id || deployment._id || deployment.Id;
   };
 
+  const getPlatformInfo = (platform) => {
+    if (!platform) return { name: 'Unknown', icon: null, color: '#6c757d' };
+    
+    const platformLower = platform.toLowerCase();
+    switch (platformLower) {
+      case 'vercel':
+        return { name: 'Vercel', icon: SiVercel, color: '#000000' };
+      case 'netlify':
+        return { name: 'Netlify', icon: SiNetlify, color: '#00C7B7' };
+      case 'cloudflare':
+        return { name: 'Cloudflare', icon: FaCloudflare, color: '#F38020' };
+      case 'githubpages':
+      case 'github':
+        return { name: 'GitHub Pages', icon: FaGithub, color: '#333333' };
+      default:
+        return { name: platform.charAt(0).toUpperCase() + platform.slice(1), icon: null, color: '#6c757d' };
+    }
+  };
+
   return (
     <div className="projects-page">
       <NavigationBar />
@@ -80,6 +101,9 @@ function Deployments() {
             deployments.map((deployment) => {
               const deploymentId = getDeploymentId(deployment);
               const repoName = deployment.repoId ? deployment.repoId.split('/').pop() : 'Unknown Repository';
+              const platformInfo = getPlatformInfo(deployment.platform);
+              const PlatformIcon = platformInfo.icon;
+              
               return (
                 <div
                   className="project-card"
@@ -103,11 +127,43 @@ function Deployments() {
                         : 'N/A'}
                     </span>
                   </div>
+                  {deployment.platform && (
+                    <div className="project-info-row" style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {PlatformIcon && (
+                        <PlatformIcon size={22} style={{ color: '#ffffff' }} />
+                      )}
+                      <span style={{ 
+                        color: '#ffffff',
+                        fontSize: '0.9rem'
+                      }}>
+                        {platformInfo.name}
+                      </span>
+                    </div>
+                  )}
                   {deployment.serviceUrl && (
                     <div className="project-info-row" style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                      <span style={{ color: '#d1caf6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <a 
+                        href={deployment.serviceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ 
+                          color: '#d1caf6', 
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis', 
+                          whiteSpace: 'nowrap',
+                          textDecoration: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          transition: 'color 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => e.target.style.color = '#b89dff'}
+                        onMouseLeave={(e) => e.target.style.color = '#d1caf6'}
+                      >
                         {deployment.serviceUrl}
-                      </span>
+                        <FaExternalLinkAlt size={12} />
+                      </a>
                     </div>
                   )}
                 </div>

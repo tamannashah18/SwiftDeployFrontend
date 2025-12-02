@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
-import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash } from 'react-icons/fa';
-import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment, getFileContent } from '../api/deployments';
+import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash, FaCloudflare } from 'react-icons/fa';
+import { SiNetlify, SiVercel } from 'react-icons/si';
+import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
 import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
@@ -538,6 +539,7 @@ const fetchConfigContent = async () => {
                 </>
               )}
 
+              {/* Deployment History */}
               <Card className="mt-4">
                 <Card.Body>
                   <h5 className="mb-3">Deployment History</h5>

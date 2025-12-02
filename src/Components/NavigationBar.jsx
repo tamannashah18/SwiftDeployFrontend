@@ -68,8 +68,8 @@ export const NavigationBar = () => {
 
           <div className="d-flex flex-column align-items-center gap-3 mb-3">
             <div
-              className="iconify-icon"
-              onClick={() => window.open('https://github.com/yourusername/swiftdeploy/issues', '_blank')}
+              className={`iconify-icon ${isActive('/help-support') ? 'active' : ''}`}
+              onClick={() => navigate('/help-support')}
               title="Help & Support"
             >
               <GoQuestion />
