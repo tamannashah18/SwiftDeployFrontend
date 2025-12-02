@@ -32,8 +32,8 @@ export const getDeploymentStatus = async (projectId) => {
 };
 export const getLatestDeployment = async (repoId) => {
   try {
-    const response = await apiClient.post('/deployments/latest', 
-      JSON.stringify({ repoId }), 
+    const response = await apiClient.post('/deployments/latest',
+      JSON.stringify({ repoId }),
       {
         headers: {
           'Content-Type': 'application/json'
@@ -66,21 +66,21 @@ export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
       const rawStatus = statusData.status || statusData.Status;
       const currentStep = statusData.currentStep || statusData.CurrentStep;
       const isSuccess = statusData.success === true || statusData.Success === true;
-      
+
       // Check completion conditions
-      const isCompleted = 
-        rawStatus === 'Completed' || 
-        rawStatus === 'completed' || 
+      const isCompleted =
+        rawStatus === 'Completed' ||
+        rawStatus === 'completed' ||
         rawStatus === 'COMPLETED' ||
         (typeof rawStatus === 'number' && rawStatus >= 6) ||
         currentStep === 'Completed' ||
         currentStep === 'completed' ||
         isSuccess;
-      
+
       // Check failure conditions
-      const isFailed = 
-        rawStatus === 'Failed' || 
-        rawStatus === 'failed' || 
+      const isFailed =
+        rawStatus === 'Failed' ||
+        rawStatus === 'failed' ||
         rawStatus === 'FAILED' ||
         (typeof rawStatus === 'number' && rawStatus < 0) ||
         currentStep === 'Failed' ||
@@ -101,7 +101,7 @@ export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
       if (!shouldStop) {
         // Clear any existing timeout to prevent multiple timeouts
         if (pollTimeout) clearTimeout(pollTimeout);
-        
+
         // Create a promise that will resolve after the interval
         await new Promise((resolve) => {
           pollTimeout = setTimeout(async () => {
@@ -128,8 +128,8 @@ export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
 
   // Add cleanup function to the returned promise
   const pollPromise = poll();
-  pollPromise.catch(() => {}); // Prevent unhandled promise rejection
-  
+  pollPromise.catch(() => { }); // Prevent unhandled promise rejection
+
   // Return an object with the promise and a stop function
   return {
     promise: pollPromise,
@@ -169,12 +169,17 @@ export const deleteProject = async (projectId) => {
     throw error.response?.data || error;
   }
 };
-
 export const regenerateConfig = async (projectId, config) => {
   try {
-    const response = await apiClient.post(`/unifieddeployment/regenerate-config/${projectId}`, {
-      config,
-    });
+    const response = await apiClient.post(
+      `/unifieddeployment/regenerate-config/${projectId}`,
+      {config:config},
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -213,7 +218,7 @@ export const getDeploymentById = async (deploymentId) => {
 
 export const getDeploymentsByRepoId = async (repoId) => {
   try {
-    const response = await apiClient.post(`/deployments/repo`,{repoId:repoId});
+    const response = await apiClient.post(`/deployments/repo`, { repoId: repoId });
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -309,7 +314,7 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     console.log('📤 Sending deployment request:', payload);
 
     const response = await apiClient.post('/unifieddeployment/deploy-with-github', payload);
-    
+
     console.log('✅ Deployment response:', response.data);
 
     // Normalize response format
@@ -328,7 +333,7 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     return normalizedResponse;
   } catch (error) {
     console.error('❌ Deployment error:', error);
-    
+
     // Better error handling
     if (error.response) {
       // Server responded with error
@@ -353,5 +358,14 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
         message: error.message || 'Failed to send deployment request'
       };
     }
+  }
+};
+
+export const getFileContent = async (owner, repoName, path) => {
+  try {
+    const response = await apiClient.get(`/unifieddeployment/file/${owner}/${repoName}/${path}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
   }
 };
