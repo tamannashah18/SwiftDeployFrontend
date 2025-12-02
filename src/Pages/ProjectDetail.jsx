@@ -4,8 +4,6 @@ import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
 import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash, FaCloudflare } from 'react-icons/fa';
 import { SiNetlify, SiVercel } from 'react-icons/si';
-import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment,getFileContent } from '../api/deployments';
-import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash } from 'react-icons/fa';
 import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment, getFileContent } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
@@ -25,6 +23,7 @@ const ProjectDetail = () => {
   const [loadingDeployments, setLoadingDeployments] = useState(false);
   const [latestDeployment, setLatestDeployment] = useState(null);
   const [configContent, setConfigContent] = useState('');
+  const [configFilePath, setConfigFilePath] = useState('');
   const [loadingConfig, setLoadingConfig] = useState(false);
 
   // ⭐ 1. Fetch project details on mount
@@ -199,9 +198,14 @@ const ProjectDetail = () => {
         return;
       }
 
-      console.log('Fetching config from URL (final):', configUrl);
-      const { owner, repo, path } = parseGitHubUrl(configUrl);
-      console.log('Parsed URL for config:', { owner, repo, path });
+       console.log('Fetching config from URL (final):', configUrl);
+       const { owner, repo, path } = parseGitHubUrl(configUrl);
+       console.log('Parsed URL for config:', { owner, repo, path });
+       if (path) {
+         setConfigFilePath(path);
+       } else {
+         setConfigFilePath('');
+       }
 
       if (owner && repo && path) {
         console.log('Fetching file content for configuration...');
@@ -796,20 +800,61 @@ const ProjectDetail = () => {
                         </div>
                       </div>
                     </Alert>
-                  ) : configContent ? (
-                    <div className="config-content-enhanced">
-                      <div className="config-raw-header mb-2">
-                        <span>Configuration File Content</span>
-                        {project.configFileUrl && (
-                          <a href={project.configFileUrl} target="_blank" rel="noopener noreferrer" className="small ms-2">
-                            View on GitHub <FaExternalLinkAlt size={10} />
-                          </a>
-                        )}
-                      </div>
-                      <pre className="config-json-enhanced">
-                        <code>{configContent}</code>
-                      </pre>
-                    </div>
+                   ) : configContent ? (
+                     <div className="config-content-enhanced">
+                       <div className="config-raw-header mb-3">
+                         <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
+                           <span>Configuration File Content</span>
+                           <br/>
+                           <div className="d-flex flex-wrap align-items-center gap-5 mt-2 mt-sm-0">
+                             {configFilePath && (
+                               <span
+                                 className="small"
+                                 style={{
+                                   backgroundColor: '#111827',
+                                   color: '#e5e7eb',
+                                   padding: '4px 8px',
+                                   borderRadius: '4px',
+                                   fontFamily: 'monospace'
+                                 }}
+                               >
+                                 {configFilePath}
+                               </span>
+                             )}
+                             {project.configFileUrl && (
+                               <a
+                                 href={project.configFileUrl}
+                                 target="_blank"
+                                 rel="noopener noreferrer"
+                                 className="small ms-sm-2"
+                               >
+                                 View on GitHub <FaExternalLinkAlt size={10} />
+                               </a>
+                             )}
+                           </div>
+                         </div>
+                       </div>
+                       <div
+                         style={{
+                           backgroundColor: '#111827',
+                           borderRadius: '8px',
+                           padding: '12px 14px',
+                           border: '1px solid #1f2937',
+                           maxHeight: '400px',
+                           overflow: 'auto'
+                         }}
+                       >
+                         <pre
+                           className="config-json-enhanced mb-0"
+                           style={{
+                             backgroundColor: 'transparent',
+                             color: '#e5e7eb'
+                           }}
+                         >
+                           <code>{configContent}</code>
+                         </pre>
+                       </div>
+                     </div>
                   ) : project?.config ? (
                     <div className="config-content-enhanced">
                       <div className="config-grid">
