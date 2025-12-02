@@ -7,7 +7,13 @@ import { analyzeAndSuggest, deployToUnifiedPlatform } from '../api/deployments';
 import { getUserTokens, savePlatformToken, startNetlifyLogin } from '../api/auth';
 import ConfigurationForm from './ConfigurationForm';
 
-const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
+const DeploymentModal = ({ 
+  show, 
+  onHide, 
+  project, 
+  onDeploymentStart,
+  isWithoutGitHub = false  // ⭐ NEW PROP to indicate deploy-without-github mode
+}) => {
   const navigate = useNavigate();
   const [step, setStep] = useState('analyze');
   const [platforms, setPlatforms] = useState([]);
@@ -49,8 +55,24 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
 
   useEffect(() => {
     if (show) {
-      fetchTokens();
-      analyzeProject();
+      // ⭐ Only fetch tokens if NOT in deploy-without-github mode
+      if (!isWithoutGitHub) {
+        fetchTokens();
+      }
+      
+      // ⭐ Only analyze project if NOT in deploy-without-github mode
+      if (!isWithoutGitHub) {
+        analyzeProject();
+      } else {
+        // ⭐ For deploy-without-github, show platform selection directly
+        setStep('select-platform-only');
+        // Set default platforms for deploy-without-github
+        setPlatforms([
+          { platform: 'Vercel', score: 90, reason: 'Fast deployment with automatic builds', features: ['Auto-scaling', 'Edge Network'], isRecommended: true },
+          { platform: 'Cloudflare', score: 85, reason: 'Global CDN with excellent performance', features: ['DDoS Protection', 'Fast CDN'] },
+          { platform: 'Netlify', score: 80, reason: 'Easy deployment with continuous integration', features: ['Form Handling', 'Split Testing'] }
+        ]);
+      }
 
       const shouldOpenNetlifyConfig = localStorage.getItem('open_deploy_modal_netlify');
       if (shouldOpenNetlifyConfig === 'true') {
@@ -62,7 +84,7 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [show]);
+  }, [show, isWithoutGitHub]);
 
   const fetchTokens = async () => {
     try {
@@ -125,6 +147,14 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
   const handlePlatformSelect = (platformObj) => {
     const normalizedName = normalizePlatformName(platformObj.platform);
     setSelectedPlatform(normalizedName);
+
+    // ⭐ For deploy-without-github, skip token checks and go directly to config
+    if (isWithoutGitHub) {
+      setStep('config');
+      return;
+    }
+
+    // ⭐ Original token check logic for deploy-with-github
     const config = platformConfig[normalizedName];
 
     if (config?.requiresOAuth && normalizedName === 'netlify') {
@@ -178,74 +208,211 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
     setStep('confirm');
   };
 
-  const handleDeploy = async () => {
-    setLoading(true);
-    setError('');
+  // ⭐ NEW: Deploy without GitHub handler
+ const handleDeployWithoutGitHub = async () => {
+  setLoading(true);
+  setError('');
 
-    try {
-      if (!project.repoId) {
-        throw new Error('GitHub repository information not found');
+  try {
+    // ⭐ Create JSON payload matching your backend UploadProjectRequest model
+    const payload = {
+      projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+      description: project.description || `Deployed ${project.projectName} via SwiftDeploy`,
+      platform: selectedPlatform,
+      repoName: project.repoId,
+      config: deploymentConfig?.config || deploymentConfig || {
+        projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+        framework: deploymentConfig?.framework || 'static',
+        buildCommand: deploymentConfig?.buildCommand || '',
+        installCommand: deploymentConfig?.installCommand || '',
+        outputDirectory: deploymentConfig?.outputDirectory || '',
+        nodeVersion: deploymentConfig?.nodeVersion || '',
+        domain: deploymentConfig?.domain || '',
+        enableHttps: deploymentConfig?.enableHttps !== undefined ? deploymentConfig.enableHttps : true,
+        environmentVariables: deploymentConfig?.environmentVariables || {},
+        redirects: deploymentConfig?.redirects || [],
+        headers: deploymentConfig?.headers || []
       }
+    };
 
-      const [owner, repo] = project.repoId.split('/');
-      const deploymentData = {
-        projectId: deploymentConfig?.projectName || project.projectName || 'deployed-project',
-        description: project.description || `Deployed ${project.projectName} via SwiftDeploy`,
-        platform: selectedPlatform,
-        owner,
-        repo,
-        branch: project.branch || 'main',
-        config: deploymentConfig || {}
-      };
+    console.log('📤 Sending deployment payload:', payload);
 
-      const response = await deployToUnifiedPlatform(deploymentData);
+    const response = await fetch('http://localhost:5280/api/UnifiedDeployment/deploy-without-github', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('jwtToken')}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-      // Handle successful deployment response
-      // Check for success in both lowercase and uppercase, and handle status number
-      const isSuccess = response && (
-        response.success === true || 
-        response.Success === true ||
-        (response.status !== undefined && typeof response.status === 'number' && response.status >= 6) ||
-        (response.status === 'Completed' || response.status === 'completed')
-      );
+    console.log('📥 Response status:', response.status);
+
+    // ⭐ Check if response is OK before parsing JSON
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Error response:', errorText);
+      let errorMessage = 'Deployment failed';
       
-      if (isSuccess) {
-        onHide();
-        const projectId = response.ProjectId || response.projectId;
-        const mongoDeploymentId = response.MongoDeploymentId || response.mongoDeploymentId;
-        
-        // If onDeploymentStart callback is provided, use it instead of navigating
-        if (onDeploymentStart) {
-          onDeploymentStart({
-            projectId,
-            mongoDeploymentId,
-            deploymentUrl: response.DeploymentUrl || response.deploymentUrl,
-            githubRepoUrl: response.GitHubRepoUrl || response.githubRepoUrl,
-            configFileUrl: response.ConfigFileUrl || response.configFileUrl,
-            status: response.status,
-            success: isSuccess
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.errors) {
+          // Handle validation errors
+          errorMessage = Object.entries(errorJson.errors)
+            .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+            .join('; ');
+        } else if (errorJson.message || errorJson.Message) {
+          errorMessage = errorJson.message || errorJson.Message;
+        } else if (errorJson.title) {
+          errorMessage = errorJson.title;
+        }
+      } catch {
+        errorMessage = errorText || `HTTP ${response.status}: ${response.statusText}`;
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    const result = await response.json();
+    console.log('✅ Deployment result:', result);
+
+    const isSuccess = result && (
+      result.success === true || 
+      result.Success === true ||
+      (result.status !== undefined && typeof result.status === 'number' && result.status >= 6) ||
+      (result.status === 'Completed' || result.status === 'completed')
+    );
+    
+    if (isSuccess) {
+      onHide();
+      const projectId = result.ProjectId || result.projectId;
+      
+      if (onDeploymentStart) {
+        onDeploymentStart({
+          projectId,
+          deploymentUrl: result.DeploymentUrl || result.deploymentUrl,
+          githubRepoUrl: result.GitHubRepoUrl || result.githubRepoUrl,
+          configFileUrl: result.ConfigFileUrl || result.configFileUrl,
+          status: result.status,
+          success: isSuccess
+        });
+      } else {
+        if (projectId) {
+          navigate(`/deployment/${projectId}`);
+        } else {
+          window.location.reload();
+        }
+      }
+    } else {
+      throw new Error(result?.Message || result?.message || 'Deployment failed');
+    }
+  } catch (err) {
+    console.error('💥 Deployment error:', err);
+    setError(err.message || 'Deployment failed');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleDeploy = async () => {
+  // ⭐ Check userType from localStorage to determine deployment mode
+  let shouldDeployWithoutGitHub = false;
+  
+  try {
+    const userData = JSON.parse(localStorage.getItem('user'));
+    const isNonGitHubUser = userData?.userType === 1;
+    
+    // Check if project has a real GitHub repo
+    const hasGitHubRepo = project?.repoId && !project.repoId.startsWith('swiftdeployapp/');
+    
+    // Use deploy-without-github if:
+    // 1. User is non-GitHub user (userType = 1) AND
+    // 2. Project doesn't have a real GitHub repo
+    shouldDeployWithoutGitHub = isNonGitHubUser && !hasGitHubRepo;
+    
+    console.log('🚀 Deployment Decision:', {
+      userType: userData?.userType,
+      isNonGitHubUser: isNonGitHubUser,
+      repoId: project?.repoId,
+      hasGitHubRepo: hasGitHubRepo,
+      shouldDeployWithoutGitHub: shouldDeployWithoutGitHub,
+      willCallAPI: shouldDeployWithoutGitHub ? 'deploy-without-github' : 'deploy-with-github'
+    });
+  } catch (error) {
+    console.error('Error checking user type:', error);
+    shouldDeployWithoutGitHub = false; // Default to with-github
+  }
+
+  // ⭐ Route to appropriate deployment handler
+  if (shouldDeployWithoutGitHub) {
+    await handleDeployWithoutGitHub();
+    return;
+  }
+
+  // ⭐ Original deploy-with-github logic
+  setLoading(true);
+  setError('');
+
+  try {
+    if (!project.repoId) {
+      throw new Error('GitHub repository information not found');
+    }
+
+    const [owner, repo] = project.repoId.split('/');
+    const deploymentData = {
+      projectId: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+      description: project.description || `Deployed ${project.projectName} via SwiftDeploy`,
+      platform: selectedPlatform,
+      owner,
+      repo,
+      branch: project.branch || 'main',
+      config: deploymentConfig || {}
+    };
+
+    const response = await deployToUnifiedPlatform(deploymentData);
+
+    const isSuccess = response && (
+      response.success === true || 
+      response.Success === true ||
+      (response.status !== undefined && typeof response.status === 'number' && response.status >= 6) ||
+      (response.status === 'Completed' || response.status === 'completed')
+    );
+    
+    if (isSuccess) {
+      onHide();
+      const projectId = response.ProjectId || response.projectId;
+      const mongoDeploymentId = response.MongoDeploymentId || response.mongoDeploymentId;
+      
+      if (onDeploymentStart) {
+        onDeploymentStart({
+          projectId,
+          mongoDeploymentId,
+          deploymentUrl: response.DeploymentUrl || response.deploymentUrl,
+          githubRepoUrl: response.GitHubRepoUrl || response.githubRepoUrl,
+          configFileUrl: response.ConfigFileUrl || response.configFileUrl,
+          status: response.status,
+          success: isSuccess
+        });
+      } else {
+        if (projectId) {
+          navigate(`/deployment/${projectId}`, {
+            state: {
+              mongoDeploymentId
+            }
           });
         } else {
-          // Fallback: navigate to deployment monitor if no callback provided
-          if (projectId) {
-            navigate(`/deployment/${projectId}`, {
-              state: {
-                mongoDeploymentId
-              }
-            });
-          } else {
-            window.location.reload();
-          }
+          window.location.reload();
         }
-      } else {
-        throw new Error(response?.Message || response?.message || 'Deployment failed');
       }
-    } catch (err) {
-      setError(err.message || 'Deployment failed');
-    } finally {
-      setLoading(false);
+    } else {
+      throw new Error(response?.Message || response?.message || 'Deployment failed');
     }
-  };
+  } catch (err) {
+    setError(err.message || 'Deployment failed');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleClose = () => {
     setStep('analyze');
@@ -294,7 +461,9 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
         borderBottom: '1px solid #6c3fb5',
         color: '#ffffff'
       }}>
-        <Modal.Title>Deploy Project</Modal.Title>
+        <Modal.Title>
+          {isWithoutGitHub ? 'Deploy Project (Without GitHub)' : 'Deploy Project'}
+        </Modal.Title>
       </Modal.Header>
       <Modal.Body style={{ 
         backgroundColor: '#3a1f6b', 
@@ -303,14 +472,78 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
       }}>
         {error && <Alert variant="danger">{error}</Alert>}
 
-        {step === 'analyze' && (
+        {step === 'analyze' && !isWithoutGitHub && (
           <div className="text-center py-5">
             <Spinner animation="border" style={{ color: '#b89dff' }} />
             <p className="mt-3" style={{ color: '#b8a3d9' }}>Analyzing project and recommending platforms...</p>
           </div>
         )}
 
-        {step === 'select' && (
+        {/* ⭐ NEW: Platform selection for deploy-without-github */}
+        {step === 'select-platform-only' && isWithoutGitHub && (
+          <div>
+            <h5 className="mb-3" style={{ color: '#ffffff' }}>Select Deployment Platform</h5>
+            <p style={{ color: '#b8a3d9', marginBottom: '1.5rem' }}>
+              Choose a platform to deploy your project
+            </p>
+
+            <div className="row g-3">
+              {platforms.map((platform, index) => {
+                const normalizedName = normalizePlatformName(platform.platform);
+                const config = platformConfig[normalizedName];
+                const Icon = config?.icon || FaGithub;
+                const isRecommended = platform.isRecommended;
+
+                return (
+                  <div key={normalizedName || index} className="col-md-6">
+                    <Card
+                      onClick={() => handlePlatformSelect(platform)}
+                      style={{
+                        backgroundColor: '#2d1b4e',
+                        border: isRecommended ? '2px solid #b89dff' : '1px solid #6c3fb5',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                      }}
+                      className="h-100"
+                    >
+                      <Card.Body>
+                        <div className="mb-3">
+                          <div className="d-flex align-items-center justify-content-between">
+                            <div className="d-flex align-items-center gap-2">
+                              <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
+                              <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
+                            </div>
+                            <Badge bg="dark" style={{ color: '#ffffff' }}>
+                              Score: {platform.score}/100
+                            </Badge>
+                          </div>
+                          {isRecommended && (
+                            <Badge bg="success" className="d-flex align-items-center gap-1 mt-2" style={{ width: 'fit-content' }}>
+                              <FaCheckCircle /> Recommended
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="mt-2">
+                          <p className="mb-2" style={{ color: '#ffffff' }}>{platform.reason}</p>
+                          <div className="d-flex flex-wrap gap-1">
+                            {platform.features?.map((feature, i) => (
+                              <Badge key={i} bg="info" className="me-1 mb-1" style={{ color: '#ffffff' }}>
+                                {feature}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Original select step for deploy-with-github */}
+        {step === 'select' && !isWithoutGitHub && (
           <div>
             <div className="mb-4">
               <h5 className="mb-3" style={{ color: '#ffffff', fontWeight: '600' }}>
@@ -488,22 +721,21 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
             onSubmit={handleConfigSubmit}
             initialConfig={{
               projectName: project.projectName || '',
-              framework: getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework),
-              // For static sites, leave all build settings empty
-              buildCommand: detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static' 
+              framework: isWithoutGitHub ? 'static' : getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework),
+              buildCommand: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static' 
                 ? '' 
-                : (detectedTech.buildTool ? `${detectedTech.packageManager} run build` : ''),
-              installCommand: detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
+                : (detectedTech.buildTool ? `${detectedTech.packageManager} run build` : '')),
+              installCommand: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
                 ? ''
-                : (detectedTech.packageManager ? `${detectedTech.packageManager} install` : ''),
-              outputDirectory: detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
+                : (detectedTech.packageManager ? `${detectedTech.packageManager} install` : '')),
+              outputDirectory: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
                 ? ''
-                : getDefaultOutputDir(detectedTech.frontendFramework || detectedTech.framework, detectedTech.buildTool),
-              nodeVersion: detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
+                : getDefaultOutputDir(detectedTech.frontendFramework || detectedTech.framework, detectedTech.buildTool)),
+              nodeVersion: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
                 ? ''
-                : '18'
+                : '18')
             }}
-            onBack={() => setStep('select')}
+            onBack={() => setStep(isWithoutGitHub ? 'select-platform-only' : 'select')}
           />
         )}
 
@@ -554,25 +786,27 @@ const DeploymentModal = ({ show, onHide, project, onDeploymentStart }) => {
                     {platformConfig[selectedPlatform]?.name}
                   </div>
                 </div>
-                <div className="mb-0">
-                  <div className="d-flex align-items-center mb-2">
-                    <FaGithub style={{ color: '#b89dff', marginRight: '8px', fontSize: '18px' }} />
-                    <strong style={{ color: '#b89dff', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Repository</strong>
+                {!isWithoutGitHub && (
+                  <div className="mb-0">
+                    <div className="d-flex align-items-center mb-2">
+                      <FaGithub style={{ color: '#b89dff', marginRight: '8px', fontSize: '18px' }} />
+                      <strong style={{ color: '#b89dff', fontSize: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Repository</strong>
+                    </div>
+                    <div style={{
+                      color: '#e0d6ff',
+                      fontSize: '14px',
+                      wordBreak: 'break-all',
+                      paddingLeft: '26px',
+                      fontFamily: 'monospace',
+                      backgroundColor: '#1a0033',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      marginLeft: '26px'
+                    }}>
+                      {project.githubRepoUrl}
+                    </div>
                   </div>
-                  <div style={{
-                    color: '#e0d6ff',
-                    fontSize: '14px',
-                    wordBreak: 'break-all',
-                    paddingLeft: '26px',
-                    fontFamily: 'monospace',
-                    backgroundColor: '#1a0033',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    marginLeft: '26px'
-                  }}>
-                    {project.githubRepoUrl}
-                  </div>
-                </div>
+                )}
               </Card.Body>
             </Card>
             <div className="d-flex gap-3 mt-4 justify-content-center">

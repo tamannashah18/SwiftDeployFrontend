@@ -16,13 +16,14 @@ function NewProject() {
   const [projectName, setProjectName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState(''); // ⭐ NEW: Success feedback
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user'));
     setUser(userData);
     setIsGitHubUser(userData?.userType == 0);
 
-    if (userData?.userType ==0) {
+    if (userData?.userType == 0) {
       fetchRepositories();
     }
   }, []);
@@ -44,9 +45,11 @@ function NewProject() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccessMessage('');
 
     try {
       if (isGitHubUser) {
+        // ⭐ GitHub User Flow
         if (!selectedRepo) {
           setError('Please select a repository');
           setLoading(false);
@@ -63,29 +66,59 @@ function NewProject() {
         await apiClient.post('/projects', projectData);
         navigate('/projects');
       } else {
+        // ⭐ Non-GitHub User Flow - Call new-without-github-project endpoint
         if (!cloudBucketId || !projectName) {
-          setError('Please provide both bucket ID and project name');
+          setError('Please provide both project name and blob name');
           setLoading(false);
           return;
         }
 
-        const importData = {
-          blobName: cloudBucketId,
-          projectName: projectName,
-          userId: user.id
+        // ⭐ Show progress message
+        setSuccessMessage('Creating project... This may take a few moments.');
+
+        const projectData = {
+          userId: user.id,
+          projectName: projectName.trim(),
+          bloburl: cloudBucketId.trim()
         };
 
-        const response = await apiClient.post('/ftp/import-from-azure', importData);
+        console.log('Creating project with data:', projectData);
 
-        if (response.data.success) {
-          navigate('/projects');
+        // ⭐ Call the new endpoint
+        const response = await apiClient.post('/projects/new-without-github-project', projectData);
+
+        console.log('Project creation response:', response.data);
+
+        if (response.data) {
+          // ⭐ Success - project created with GitHub repo
+          setSuccessMessage('Project created successfully! Redirecting...');
+          
+          // ⭐ Wait a moment to show success message
+          setTimeout(() => {
+            navigate('/projects');
+          }, 1500);
         } else {
-          setError(response.data.message || 'Import failed');
+          setError('Failed to create project');
         }
       }
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to create project');
-      console.error(err);
+      console.error('Project creation error:', err);
+      
+      // ⭐ Enhanced error handling
+      let errorMessage = 'Failed to create project';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data) {
+        errorMessage = typeof err.response.data === 'string' 
+          ? err.response.data 
+          : JSON.stringify(err.response.data);
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
+      setSuccessMessage('');
     } finally {
       setLoading(false);
     }
@@ -104,14 +137,28 @@ function NewProject() {
                   Create New Project
                 </h2>
 
+                {/* ⭐ Error Alert */}
                 {error && (
                   <div className="alert alert-danger" role="alert">
-                    {error}
+                    <strong>Error:</strong> {error}
+                  </div>
+                )}
+
+                {/* ⭐ Success Alert */}
+                {successMessage && (
+                  <div className="alert alert-success" role="alert">
+                    <div className="d-flex align-items-center">
+                      <div className="spinner-border spinner-border-sm me-2" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <span>{successMessage}</span>
+                    </div>
                   </div>
                 )}
 
                 <form onSubmit={handleSubmit}>
                   {isGitHubUser ? (
+                    // ⭐ GitHub User - Select Repository
                     <div>
                       <div className="mb-4">
                         <label className="form-label" style={{ color: '#ffffff' }}>
@@ -152,45 +199,71 @@ function NewProject() {
                       )}
                     </div>
                   ) : (
+                    // ⭐ Non-GitHub User - Project Name + Blob URL
                     <div>
                       <div className="mb-4">
                         <label className="form-label" style={{ color: '#ffffff' }}>
-                          Project Name
+                          Project Name <span style={{ color: '#ff6b6b' }}>*</span>
                         </label>
                         <input
                           type="text"
                           className="form-control form-control-lg"
                           value={projectName}
                           onChange={(e) => setProjectName(e.target.value)}
-                          placeholder="Enter project name"
+                          placeholder="Enter project name (e.g., My Website)"
                           required
+                          disabled={loading}
                           style={{
                             backgroundColor: '#1a0033',
                             color: '#ffffff',
                             border: '1px solid #6c3fb5'
                           }}
                         />
+                        <small style={{ color: '#b8a3d9', marginTop: '0.5rem', display: 'block' }}>
+                          Choose a descriptive name for your project
+                        </small>
                       </div>
 
                       <div className="mb-4">
                         <label className="form-label" style={{ color: '#ffffff' }}>
-                          Cloud Bucket ID / Blob Name
+                          Azure Blob Name <span style={{ color: '#ff6b6b' }}>*</span>
                         </label>
                         <input
                           type="text"
                           className="form-control form-control-lg"
                           value={cloudBucketId}
                           onChange={(e) => setCloudBucketId(e.target.value)}
-                          placeholder="Enter your Azure blob name (e.g., myproject.zip)"
+                          placeholder="Enter blob name (e.g., myproject.zip)"
                           required
+                          disabled={loading}
                           style={{
                             backgroundColor: '#1a0033',
                             color: '#ffffff',
                             border: '1px solid #6c3fb5'
                           }}
                         />
-                        <small style={{ color: '#b8a3d9' }}>
+                        <small style={{ color: '#b8a3d9', marginTop: '0.5rem', display: 'block' }}>
                           The name of your ZIP file stored in Azure Blob Storage
+                        </small>
+                      </div>
+
+                      {/* ⭐ Info Box */}
+                      <div 
+                        className="alert" 
+                        style={{ 
+                          backgroundColor: 'rgba(108, 63, 181, 0.2)', 
+                          border: '1px solid #6c3fb5',
+                          color: '#ffffff'
+                        }}
+                      >
+                        <h6 style={{ color: '#b89dff', marginBottom: '0.5rem' }}>
+                          📦 What happens next?
+                        </h6>
+                        <small>
+                          1. Your project will be downloaded from Azure<br/>
+                          2. A GitHub repository will be created automatically<br/>
+                          3. Your code will be pushed to the new repository<br/>
+                          4. You'll be able to deploy it to any platform
                         </small>
                       </div>
                     </div>
@@ -210,7 +283,7 @@ function NewProject() {
                       {loading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" />
-                          Creating...
+                          {isGitHubUser ? 'Creating...' : 'Creating & Setting Up GitHub...'}
                         </>
                       ) : (
                         'Create Project'
