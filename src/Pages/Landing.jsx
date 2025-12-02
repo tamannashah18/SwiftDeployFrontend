@@ -41,6 +41,16 @@ const features = [
       </>
     ),
   },
+  {
+    icon: <FaGithub className="feature-icon" />,
+    title: "One-click Deployments from GitHub Repos",
+    description: (
+      <>
+        Deploy directly from your GitHub repositories<br />
+        with just one click, no configuration needed.
+      </>
+    ),
+  },
 ];
 
 const howWorks = [
@@ -124,10 +134,19 @@ const Landing = () => {
     <div className="landing-bg">
       <Header />
       <main className="landing-main">
-        <h1 className="landing-title">One-click Deployments<br />from<br />GitHub Repos</h1>
+        <h1 className="landing-title">Deploy Faster,<br />Build Better</h1>
         <div className="features-row">
-          {features.map((feature, idx) => (
+          {features.slice(0, 3).map((feature, idx) => (
             <div className="feature-card" key={idx}>
+              {feature.icon}
+              <h2 className="feature-title">{feature.title}</h2>
+              <p className="feature-desc">{feature.description}</p>
+            </div>
+          ))}
+        </div>
+        <div className="features-row" style={{ marginTop: '20px' }}>
+          {features.slice(3).map((feature, idx) => (
+            <div className="feature-card" key={idx + 3}>
               {feature.icon}
               <h2 className="feature-title">{feature.title}</h2>
               <p className="feature-desc">{feature.description}</p>

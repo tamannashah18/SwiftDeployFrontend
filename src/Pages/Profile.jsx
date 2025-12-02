@@ -48,6 +48,19 @@ function Profile() {
     }
   }, []);
 
+  // Check if user has GitHub account
+  const hasGitHubAccount = () => {
+    if (!user) return false;
+    // Check if user has github_access_token in localStorage
+    const hasGitHubToken = !!localStorage.getItem("github_access_token");
+    // Check if user has GithubId (GitHub users have this)
+    const hasGithubId = !!user.githubId;
+    // Check if userType is GitHub
+    const isGitHubUser = user.userType === 'GitHub' || user.UserType === 'GitHub';
+    
+    return hasGitHubToken || hasGithubId || isGitHubUser;
+  };
+
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
@@ -336,9 +349,11 @@ function Profile() {
               <button onClick={() => setPasswordMode(true)} className="btn">
                 Reset Password
               </button>
+              {hasGitHubAccount() && (
               <button onClick={() => setTokenMode(true)} className="btn">
                 Manage Tokens
               </button>
+              )}
             </div>
           </div>
         )}
