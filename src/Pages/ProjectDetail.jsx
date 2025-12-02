@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
-import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash, FaCloudflare } from 'react-icons/fa';
-import { SiNetlify, SiVercel } from 'react-icons/si';
-import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment } from '../api/deployments';
+import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash } from 'react-icons/fa';
+import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment, getFileContent } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
 import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
@@ -70,18 +69,19 @@ const ProjectDetail = () => {
     fetchDeployments();
   }, [activeTab, project?.repoId]);
 
+  const fetchLatestDeployment = async () => {
+    if (project?.repoId) {
+      try {
+        const data = await getLatestDeployment(project.repoId);
+        setLatestDeployment(data);
+      } catch (err) {
+        console.warn('Failed to fetch latest deployment:', err);
+      }
+    }
+  };
+
   // ⭐ 4. Fetch latest deployment
   useEffect(() => {
-    const fetchLatestDeployment = async () => {
-      if (project?.repoId) {
-        try {
-          const data = await getLatestDeployment(project.repoId);
-          setLatestDeployment(data);
-        } catch (err) {
-          console.warn('Failed to fetch latest deployment:', err);
-        }
-      }
-    };
     fetchLatestDeployment();
   }, [project?.repoId]);
 
@@ -90,11 +90,11 @@ const ProjectDetail = () => {
     const shouldOpenDeployModal = localStorage.getItem('open_deploy_modal_netlify');
     if (shouldOpenDeployModal === 'true' && project) {
       setShowDeployModal(true);
-      localStorage.removeItem('open_deploy_modal_netlify'); // Clean up
+      localStorage.removeItem('open_deploy_modal_netlify');
     }
   }, [project]);
 
-  // ⭐ 6. Refresh project details when switching to configuration tab (if config is missing)
+  // ⭐ 6. Refresh project details when switching to configuration tab
   useEffect(() => {
     const refreshProjectForConfig = async () => {
       if (activeTab === 'configuration' && !project?.config && !loading) {
@@ -105,30 +105,115 @@ const ProjectDetail = () => {
 
     refreshProjectForConfig();
   }, [activeTab]);
-const fetchConfigContent = async () => {
-  if (activeTab === 'configuration' && project?.configFileUrl) {
+
+  const parseGitHubUrl = (url) => {
+    try {
+      // Handle raw GitHub URLs
+      if (url.includes('raw.githubusercontent.com')) {
+        const urlObj = new URL(url);
+        const parts = urlObj.pathname.split('/').filter(Boolean);
+        // Format: /owner/repo/branch/path/to/file
+        if (parts.length >= 4) {
+          return {
+            owner: parts[0],
+            repo: parts[1],
+            path: parts.slice(3).join('/')
+          };
+        }
+      } 
+      // Handle GitHub blob URLs
+      else {
+        const urlObj = new URL(url);
+        const parts = urlObj.pathname.split('/').filter(Boolean);
+        // Format: /owner/repo/blob/branch/path/to/file
+        if (parts.length >= 5 && parts[2] === 'blob') {
+          return {
+            owner: parts[0],
+            repo: parts[1],
+            path: parts.slice(4).join('/')
+          };
+        }
+      }
+      return {};
+    } catch (e) {
+      console.error('Error parsing GitHub URL:', e);
+      return {};
+    }
+  };
+
+  const fetchConfigContent = async () => {
+    if (activeTab !== 'configuration') return;
+
     try {
       setLoadingConfig(true);
-      console.log('Fetching config from URL:', project.configFileUrl);
-      const { owner, repo, path } = parseGitHubUrl(project.configFileUrl);
-      console.log('Parsed URL:', { owner, repo, path });
+      setError('');
+      fetchLatestDeployment();
+      let configUrl = latestDeployment?.configFileUrl;
       
+      if (!configUrl && project?.repoId) {
+        try {
+          console.log('Fetching deployments by repoId for configuration:', project.repoId);
+          const deployments = await getDeploymentsByRepoId(project.repoId);
+          console.log('Deployments returned for configuration:', deployments);
+
+          const list = Array.isArray(deployments) ? deployments : (deployments ? [deployments] : []);
+
+          const getConfigUrlFromDeployment = (d) => {
+            if (!d) return null;
+            return (
+              d.configFileUrl ||
+              d.ConfigFileUrl ||
+              d.configUrl ||
+              d.ConfigUrl ||
+              d.configurationUrl ||
+              d.ConfigurationUrl ||
+              (d.config && (d.config.fileUrl || d.config.configFileUrl || d.config.url)) ||
+              null
+            );
+          };
+
+          const deploymentWithConfig = list.find(d => !!getConfigUrlFromDeployment(d));
+
+          if (deploymentWithConfig) {
+            configUrl = getConfigUrlFromDeployment(deploymentWithConfig);
+            console.log('Found configuration URL from repo endpoint:', configUrl, deploymentWithConfig);
+
+            setDeploymentInfo(prev => ({
+              ...(prev || {}),
+              configFileUrl: configUrl
+            }));
+            setProject(prev => prev ? ({ ...prev, configFileUrl: configUrl }) : prev);
+          } else {
+            console.warn('No deployment with any configuration URL field found for repo:', project.repoId);
+          }
+        } catch (repoErr) {
+          console.warn('Failed to fetch deployments for configuration via repo endpoint:', repoErr);
+        }
+      }
+
+      if (!configUrl) {
+        setConfigContent('');
+        return;
+      }
+
+      console.log('Fetching config from URL (final):', configUrl);
+      const { owner, repo, path } = parseGitHubUrl(configUrl);
+      console.log('Parsed URL for config:', { owner, repo, path });
+
       if (owner && repo && path) {
-        console.log('Fetching file content...');
+        console.log('Fetching file content for configuration...');
         const content = await getFileContent(owner, repo, path);
-        console.log('Received content:', content);
-        // Handle both string and object responses
+        console.log('Received configuration content:', content);
+
         if (typeof content === 'string') {
           setConfigContent(content);
-        } else if (content.content) {
-          // If the API returns an object with a content property
+        } else if (content && typeof content === 'object' && 'content' in content) {
           setConfigContent(content.content);
         } else {
-          // If the API returns the content as a different property
           setConfigContent(JSON.stringify(content, null, 2));
         }
       } else {
-        console.warn('Missing required parameters from URL:', { owner, repo, path });
+        console.warn('Missing required GitHub parameters from URL for configuration:', { owner, repo, path });
         setConfigContent('');
       }
     } catch (err) {
@@ -138,63 +223,30 @@ const fetchConfigContent = async () => {
     } finally {
       setLoadingConfig(false);
     }
-  }
-};
+  };
+
   // ⭐ 7. Fetch config file content from GitHub
   useEffect(() => {
     fetchConfigContent();
-  }, [activeTab, project?.configFileUrl]);
- 
-  const parseGitHubUrl = (url) => {
-  try {
-    // Handle raw GitHub URLs
-    if (url.includes('raw.githubusercontent.com')) {
-      const urlObj = new URL(url);
-      const parts = urlObj.pathname.split('/').filter(Boolean);
-      // Format: /owner/repo/branch/path/to/file
-      if (parts.length >= 4) {
-        return {
-          owner: parts[0],
-          repo: parts[1],
-          path: parts.slice(3).join('/')
-        };
-      }
-    } 
-    // Handle GitHub blob URLs
-    else {
-      const urlObj = new URL(url);
-      const parts = urlObj.pathname.split('/').filter(Boolean);
-      // Format: /owner/repo/blob/branch/path/to/file
-      if (parts.length >= 5 && parts[2] === 'blob') {
-        return {
-          owner: parts[0],
-          repo: parts[1],
-          path: parts.slice(4).join('/')
-        };
-      }
-    }
-    return {};
-  } catch (e) {
-    console.error('Error parsing GitHub URL:', e);
-    return {};
-  }
-};
+  }, [activeTab, project?.configFileUrl, deploymentInfo?.configFileUrl]);
+
   const fetchProjectDetails = async () => {
-  try {
-    setLoading(true);
-    const data = await getProjectDetails(id);
-    console.log('Fetched project details:', data);
-    setProject(data);
-    setError(''); // Clear any previous errors
-    return data; // Return the data so we can use it
-  } catch (err) {
-    setError('Failed to load project details');
-    console.error('Error fetching project details:', err);
-    return null;
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      const data = await getProjectDetails(id);
+      console.log('Fetched project details:', data);
+      setProject(data);
+      setError('');
+      return data;
+    } catch (err) {
+      setError('Failed to load project details');
+      console.error('Error fetching project details:', err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
       return;
@@ -212,7 +264,6 @@ const fetchConfigContent = async () => {
   const handleRegenerateConfig = async () => {
     console.log('Current project config:', project?.config);
 
-    // ⭐ Validate that config exists
     if (!project?.config) {
       setError('No configuration found for this project. Please ensure the project has a valid configuration.');
       return;
@@ -224,15 +275,13 @@ const fetchConfigContent = async () => {
 
     try {
       setLoadingConfig(true);
-      setError(''); // Clear any previous errors
+      setError('');
       
       console.log('Regenerating config with:', project.config);
       await regenerateConfig(id, project.config);
       
-      // ⭐ Refresh project details after regeneration
       await fetchProjectDetails();
       
-      // ⭐ Refresh config content if configFileUrl exists
       if (project?.configFileUrl) {
         const { owner, repo, path } = parseGitHubUrl(project.configFileUrl);
         if (owner && repo && path) {
@@ -455,14 +504,19 @@ const fetchConfigContent = async () => {
                   mongoDeploymentId={deploymentInfo.mongoDeploymentId}
                   onStatusUpdate={(status) => {
                     setDeploymentInfo(prev => ({ ...prev, ...status }));
-                    if (status.deploymentUrl) {
-                      setProject(prev => ({
+
+                    setProject(prev => {
+                      if (!prev) return prev;
+
+                      return {
                         ...prev,
-                        deploymentUrl: status.deploymentUrl,
+                        deploymentUrl: status.deploymentUrl || prev.deploymentUrl,
                         githubRepoUrl: status.githubRepoUrl || prev.githubRepoUrl,
+                        configFileUrl: status.configFileUrl || prev.configFileUrl,
                         status: status.status === 'Completed' ? 'Completed' : prev.status
-                      }));
-                    }
+                      };
+                    });
+
                     if (project?.repoId) {
                       getDeploymentsByRepoId(project.repoId).then(deployments => {
                         if (Array.isArray(deployments)) {
@@ -539,7 +593,6 @@ const fetchConfigContent = async () => {
                 </>
               )}
 
-              {/* Deployment History */}
               <Card className="mt-4">
                 <Card.Body>
                   <h5 className="mb-3">Deployment History</h5>
@@ -637,7 +690,6 @@ const fetchConfigContent = async () => {
                       </div>
                       <p className="config-subtitle">Build and deployment settings</p>
                     </div>
-                    {/* ⭐ Only show regenerate button if config exists */}
                     {project?.config && (
                       <Button
                         className="regenerate-button"
@@ -659,35 +711,35 @@ const fetchConfigContent = async () => {
                   </div>
 
                   {loadingConfig && !configContent && !project?.config ? (
-  <div className="text-center py-5">
-    <Spinner animation="border" variant="primary" />
-    <p className="mt-2 text-muted">Loading configuration...</p>
-  </div>
-) : error && activeTab === 'configuration' ? (
-  <Alert variant="danger" className="mt-3">
-    <div className="d-flex align-items-center">
-      <i className="bi bi-exclamation-triangle-fill me-2"></i>
-      <div>
-        <h6>Error loading configuration</h6>
-        <p className="mb-0">{error}</p>
-        <Button 
-          variant="outline-primary" 
-          size="sm" 
-          onClick={fetchConfigContent}
-          className="mt-2"
-          disabled={loadingConfig}
-        >
-          {loadingConfig ? (
-            <Spinner animation="border" size="sm" className="me-2" />
-          ) : (
-            <i className="bi bi-arrow-clockwise me-2"></i>
-          )}
-          Retry
-        </Button>
-      </div>
-    </div>
-  </Alert>
-) : configContent ? (
+                    <div className="text-center py-5">
+                      <Spinner animation="border" variant="primary" />
+                      <p className="mt-2 text-muted">Loading configuration...</p>
+                    </div>
+                  ) : error && activeTab === 'configuration' ? (
+                    <Alert variant="danger" className="mt-3">
+                      <div className="d-flex align-items-center">
+                        <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                        <div>
+                          <h6>Error loading configuration</h6>
+                          <p className="mb-0">{error}</p>
+                          <Button 
+                            variant="outline-primary" 
+                            size="sm" 
+                            onClick={fetchConfigContent}
+                            className="mt-2"
+                            disabled={loadingConfig}
+                          >
+                            {loadingConfig ? (
+                              <Spinner animation="border" size="sm" className="me-2" />
+                            ) : (
+                              <i className="bi bi-arrow-clockwise me-2"></i>
+                            )}
+                            Retry
+                          </Button>
+                        </div>
+                      </div>
+                    </Alert>
+                  ) : configContent ? (
                     <div className="config-content-enhanced">
                       <div className="config-raw-header mb-2">
                         <span>Configuration File Content</span>

@@ -364,7 +364,7 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
 };
 export const getFileContent = async (owner, repoName, path) => {
   try {
-    const response = await apiClient.get(`/unifieddeployment/file/${owner}/${repoName}/${encodeURIComponent(path)}`);
+    const response = await apiClient.get(`/repositories/file/${owner}/${repoName}/${encodeURIComponent(path)}`);
     // If the response is a string, return it directly
     if (typeof response.data === 'string') {
       return response.data;
