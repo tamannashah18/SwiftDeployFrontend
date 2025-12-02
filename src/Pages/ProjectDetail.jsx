@@ -270,25 +270,65 @@ const ProjectDetail = () => {
 
   const handleRegenerateConfig = async () => {
     console.log('Current project config:', project?.config);
-
-    if (!project?.config) {
-      setError('No configuration found for this project. Please ensure the project has a valid configuration.');
-      return;
-    }
-
+    console.log('Current project object:', project);
+  
     if (!window.confirm('Are you sure you want to regenerate the configuration? This will overwrite the existing configuration file.')) {
       return;
     }
-
+  
     try {
       setLoadingConfig(true);
       setError('');
       
-      console.log('Regenerating config with:', project.config);
-      await regenerateConfig(id, project.config);
+      // Get project name from multiple possible sources
+      const projectName = 
+        (project?.projectName && project.projectName.trim()) ||
+        (project?.ProjectName && project.ProjectName.trim()) ||
+        (project?.config?.ProjectName && project.config.ProjectName.trim()) ||
+        (project?.config?.projectName && project.config.projectName.trim()) ||
+        (project?.name && project.name.trim()) ||
+        'Deployed Project';
       
+      // Validate that ProjectName is not empty
+      if (!projectName || projectName.trim() === '') {
+        setError('Project name is required but not found. Please ensure the project has a valid name.');
+        setLoadingConfig(false);
+        return;
+      }
+      
+      // ⭐ BUILD COMPLETE CONFIG OBJECT matching backend CommonConfig structure
+      const configToSend = {
+        ProjectName: projectName.trim(),
+        BuildCommand: project?.config?.BuildCommand || project?.config?.buildCommand || '',
+        OutputDirectory: project?.config?.OutputDirectory || project?.config?.outputDirectory || '.',
+        InstallCommand: project?.config?.InstallCommand || project?.config?.installCommand || '',
+        Framework: project?.config?.Framework || project?.config?.framework || 'static',
+        // Optional fields
+        ...(project?.config?.NodeVersion && { NodeVersion: project.config.NodeVersion }),
+        ...(project?.config?.Domain && { Domain: project.config.Domain }),
+        ...(project?.config?.EnableHttps !== undefined && { EnableHttps: project.config.EnableHttps }),
+        ...(project?.config?.EnvironmentVariables && { EnvironmentVariables: project.config.EnvironmentVariables }),
+        ...(project?.config?.Redirects && { Redirects: project.config.Redirects }),
+        ...(project?.config?.Headers && { Headers: project.config.Headers })
+      };
+      
+      console.log('Project name resolved to:', projectName);
+      console.log('Regenerating config with:', configToSend);
+      console.log('Project ID being sent:', id);
+      console.log('Full project object:', project);
+      
+      // ⭐ USE THE CORRECT PROJECT ID
+      // Try different ID fields that might exist
+      const projectIdToUse = project?._id || project?.id || project?.projectId || project?.ProjectId || id;
+      
+      console.log('Using project ID:', projectIdToUse);
+      
+      await regenerateConfig(projectIdToUse, configToSend);
+      
+      // Refresh project details
       await fetchProjectDetails();
       
+      // Refresh config content if URL exists
       if (project?.configFileUrl) {
         const { owner, repo, path } = parseGitHubUrl(project.configFileUrl);
         if (owner && repo && path) {
@@ -302,6 +342,7 @@ const ProjectDetail = () => {
       const errorMessage = err.response?.data?.message || err.message || 'Unknown error';
       setError(`Failed to regenerate configuration: ${errorMessage}`);
       console.error('Regenerate config error:', err);
+      console.error('Error response:', err.response);
     } finally {
       setLoadingConfig(false);
     }
@@ -783,101 +824,119 @@ const ProjectDetail = () => {
                         <div>
                           <h6>Error loading configuration</h6>
                           <p className="mb-0">{error}</p>
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
-                            onClick={fetchConfigContent}
-                            className="mt-2"
-                            disabled={loadingConfig}
-                          >
-                            {loadingConfig ? (
-                              <Spinner animation="border" size="sm" className="me-2" />
-                            ) : (
-                              <i className="bi bi-arrow-clockwise me-2"></i>
-                            )}
-                            Retry
-                          </Button>
                         </div>
                       </div>
                     </Alert>
                    ) : configContent ? (
-                     <div className="config-content-enhanced">
-                       <div className="config-raw-header mb-3">
-                         <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
-                           <span>Configuration File Content</span>
-                           <br/>
-                           <div className="d-flex flex-wrap align-items-center gap-5 mt-2 mt-sm-0">
-                             {configFilePath && (
-                               <span
-                                 className="small"
-                                 style={{
-                                   backgroundColor: '#111827',
-                                   color: '#e5e7eb',
-                                   padding: '4px 8px',
-                                   borderRadius: '4px',
-                                   fontFamily: 'monospace'
-                                 }}
-                               >
-                                 {configFilePath}
-                               </span>
-                             )}
-                             {project.configFileUrl && (
-                               <a
-                                 href={project.configFileUrl}
-                                 target="_blank"
-                                 rel="noopener noreferrer"
-                                 className="small ms-sm-2"
-                               >
-                                 View on GitHub <FaExternalLinkAlt size={10} />
-                               </a>
-                             )}
+                     <>
+                       <div className="config-content-enhanced">
+                         <div className="config-raw-header mb-3">
+                           <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
+                             <span>Configuration File Content</span>
+                             <br />
+                             <div className="d-flex flex-wrap align-items-center gap-5 mt-2 mt-sm-0">
+                               {configFilePath && (
+                                 <span
+                                   className="small"
+                                   style={{
+                                     backgroundColor: '#111827',
+                                     color: '#e5e7eb',
+                                     padding: '4px 8px',
+                                     borderRadius: '4px',
+                                     fontFamily: 'monospace'
+                                   }}
+                                 >
+                                   {configFilePath}
+                                 </span>
+                               )}
+                               {project.configFileUrl && (
+                                 <a
+                                   href={project.configFileUrl}
+                                   target="_blank"
+                                   rel="noopener noreferrer"
+                                   className="small ms-sm-2"
+                                 >
+                                   View on GitHub <FaExternalLinkAlt size={10} />
+                                 </a>
+                               )}
+                             </div>
                            </div>
                          </div>
-                       </div>
-                       <div
-                         style={{
-                           backgroundColor: '#111827',
-                           borderRadius: '8px',
-                           padding: '12px 14px',
-                           border: '1px solid #1f2937',
-                           maxHeight: '400px',
-                           overflow: 'auto'
-                         }}
-                       >
-                         <pre
-                           className="config-json-enhanced mb-0"
+                         <div
                            style={{
-                             backgroundColor: 'transparent',
-                             color: '#e5e7eb'
+                             backgroundColor: '#111827',
+                             borderRadius: '8px',
+                             padding: '12px 14px',
+                             border: '1px solid #1f2937',
+                             maxHeight: '400px',
+                             overflow: 'auto'
                            }}
                          >
-                           <code>{configContent}</code>
-                         </pre>
+                           <pre
+                             className="config-json-enhanced mb-0"
+                             style={{
+                               backgroundColor: 'transparent',
+                               color: '#e5e7eb'
+                             }}
+                           >
+                             <code>{configContent}</code>
+                           </pre>
+                         </div>
                        </div>
-                     </div>
-                  ) : project?.config ? (
-                    <div className="config-content-enhanced">
-                      <div className="config-grid">
-                        {Object.entries(project.config).map(([key, value]) => (
-                          <div key={key} className="config-item-enhanced">
-                            <div className="config-key">
-                              <code>{key}</code>
-                            </div>
-                            <div className="config-value">
-                              <code>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</code>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="config-raw">
-                        <div className="config-raw-header">
-                          <span>Raw JSON</span>
-                        </div>
-                        <pre className="config-json-enhanced">
-                          <code>{JSON.stringify(project.config, null, 2)}</code>
-                        </pre>
-                      </div>
-                    </div>
+
+                       <div className="mt-3">
+                         <Button
+                           variant="outline-primary"
+                           size="sm"
+                           onClick={handleRegenerateConfig}
+                           disabled={loadingConfig}
+                         >
+                           {loadingConfig ? (
+                             <Spinner animation="border" size="sm" className="me-1" />
+                           ) : null}
+                           Regenerate Config
+                         </Button>
+                       </div>
+                     </>
+                   ) : project?.config ? (
+                     <>
+                       <div className="config-content-enhanced">
+                         <div className="config-grid">
+                           {Object.entries(project.config).map(([key, value]) => (
+                             <div key={key} className="config-item-enhanced">
+                               <div className="config-key">
+                                 <code>{key}</code>
+                               </div>
+                               <div className="config-value">
+                                 <code>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</code>
+                               </div>
+                             </div>
+                           ))}
+                         </div>
+                         <div className="config-raw">
+                           <div className="config-raw-header">
+                             <span>Raw JSON</span>
+                           </div>
+                           <pre className="config-json-enhanced">
+                             <code>{JSON.stringify(project.config, null, 2)}</code>
+                           </pre>
+                         </div>
+                       </div>
+
+                       <div className="mt-3">
+                         <Button
+                           variant="outline-primary"
+                           size="sm"
+                           onClick={handleRegenerateConfig}
+                           disabled={loadingConfig}
+                         >
+                           {loadingConfig ? (
+                             <Spinner animation="border" size="sm" className="me-1" />
+                           ) : null}
+                           Regenerate Config
+                         </Button>
+                       </div>
+                     </>
                   ) : (
                     <div className="config-empty">
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" opacity="0.3">

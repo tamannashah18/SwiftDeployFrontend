@@ -171,9 +171,32 @@ export const deleteProject = async (projectId) => {
 };
 export const regenerateConfig = async (projectId, config) => {
   try {
+    console.log('regenerateConfig called with:', { projectId, config });
+    
+    // Ensure config has at least ProjectName and other required fields
+    // Spread config first, then override with defaults if missing
+    const configToSend = {
+      ...config,
+      ProjectName: (config.ProjectName || config.projectName || 'Deployed Project').trim(),
+      BuildCommand: config.BuildCommand || config.buildCommand || '',
+      OutputDirectory: config.OutputDirectory || config.outputDirectory || '.',
+      InstallCommand: config.InstallCommand || config.installCommand || '',
+      Framework: config.Framework || config.framework || 'static'
+    };
+    
+    // Ensure ProjectName is set and not empty (required by backend)
+    if (!configToSend.ProjectName || configToSend.ProjectName.trim() === '') {
+      throw new Error('ProjectName is required but was not provided or is empty');
+    }
+    
+    // Final override to ensure ProjectName is always set correctly
+    configToSend.ProjectName = configToSend.ProjectName.trim();
+    
+    console.log('Sending config to backend:', configToSend);
+    
     const response = await apiClient.post(
       `/unifieddeployment/regenerate-config/${projectId}`,
-      {config:config},
+      configToSend,
       {
         headers: {
           'Content-Type': 'application/json'
@@ -182,6 +205,8 @@ export const regenerateConfig = async (projectId, config) => {
     );
     return response.data;
   } catch (error) {
+    console.error('regenerateConfig error:', error);
+    console.error('Error response:', error.response?.data);
     throw error.response?.data || error;
   }
 };
