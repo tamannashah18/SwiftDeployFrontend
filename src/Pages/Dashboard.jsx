@@ -52,6 +52,19 @@ function Dashboard() {
     fetchDashboardData();
   }, []);
 
+  // Check if user has GitHub account
+  const hasGitHubAccount = () => {
+    if (!user) return false;
+    // Check if user has github_access_token in localStorage
+    const hasGitHubToken = !!localStorage.getItem("github_access_token");
+    // Check if user has GithubId (GitHub users have this)
+    const hasGithubId = !!user.githubId;
+    // Check if userType is GitHub
+    const isGitHubUser = user.userType === 'GitHub' || user.UserType === 'GitHub';
+    
+    return hasGitHubToken || hasGithubId || isGitHubUser;
+  };
+
   const handleConnectGitHub = () => {
     startGitHubLogin();
   };
@@ -158,50 +171,52 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="row">
-          <div className="col-12">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h2 className="h4 mb-0" style={{ color: '#ffffff' }}>Connected Platforms</h2>
-              <small style={{ color: '#b8a3d9' }}>Connect platforms to enable deployments</small>
-            </div>
-            <div className="row g-3">
-              {platformCards.map((platform) => (
-                <div key={platform.key} className="col-12 col-sm-6 col-lg-3">
-                  <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}>
-                    <div className="card-body">
-                      <div className="d-flex align-items-center justify-content-between mb-3">
-                        <platform.icon size={32} style={{ color: platform.color }} />
-                        {connectedPlatforms[platform.key] ? (
-                          <span className="badge bg-success">Connected</span>
-                        ) : (
-                          <span className="badge bg-secondary">Not Connected</span>
+        {hasGitHubAccount() && (
+          <div className="row">
+            <div className="col-12">
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h2 className="h4 mb-0" style={{ color: '#ffffff' }}>Connected Platforms</h2>
+                <small style={{ color: '#b8a3d9' }}>Connect platforms to enable deployments</small>
+              </div>
+              <div className="row g-3">
+                {platformCards.map((platform) => (
+                  <div key={platform.key} className="col-12 col-sm-6 col-lg-3">
+                    <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}>
+                      <div className="card-body">
+                        <div className="d-flex align-items-center justify-content-between mb-3">
+                          <platform.icon size={32} style={{ color: platform.color }} />
+                          {connectedPlatforms[platform.key] ? (
+                            <span className="badge bg-success">Connected</span>
+                          ) : (
+                            <span className="badge bg-secondary">Not Connected</span>
+                          )}
+                        </div>
+                        <h5 className="card-title" style={{ color: '#ffffff' }}>{platform.name}</h5>
+                        {!connectedPlatforms[platform.key] && platform.action && (
+                          <button
+                            className="btn btn-sm btn-outline-primary mt-3 w-100"
+                            onClick={platform.action}
+                          >
+                            Connect {platform.name}
+                          </button>
+                        )}
+                        {connectedPlatforms[platform.key] && (
+                          <button 
+                            className="btn btn-sm btn-outline-danger mt-3 w-100"
+                            onClick={() => handleDisconnect(platform.key)}
+                            disabled={disconnecting === platform.key}
+                          >
+                            {disconnecting === platform.key ? 'Disconnecting...' : 'Disconnect'}
+                          </button>
                         )}
                       </div>
-                      <h5 className="card-title" style={{ color: '#ffffff' }}>{platform.name}</h5>
-                      {!connectedPlatforms[platform.key] && platform.action && (
-                        <button
-                          className="btn btn-sm btn-outline-primary mt-3 w-100"
-                          onClick={platform.action}
-                        >
-                          Connect {platform.name}
-                        </button>
-                      )}
-                      {connectedPlatforms[platform.key] && (
-                        <button 
-                          className="btn btn-sm btn-outline-danger mt-3 w-100"
-                          onClick={() => handleDisconnect(platform.key)}
-                          disabled={disconnecting === platform.key}
-                        >
-                          {disconnecting === platform.key ? 'Disconnecting...' : 'Disconnect'}
-                        </button>
-                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {projects.length > 0 && (
           <div className="row mt-5">

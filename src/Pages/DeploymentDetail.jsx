@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
-import { FaExternalLinkAlt, FaTrash, FaGithub } from 'react-icons/fa';
+import { FaExternalLinkAlt, FaTrash, FaGithub, FaCloudflare } from 'react-icons/fa';
+import { SiNetlify, SiVercel } from 'react-icons/si';
 import { getDeploymentById, deleteDeployment } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import '../css/ProjectDetail.css';
@@ -56,6 +57,25 @@ const DeploymentDetail = () => {
 
   const getDeploymentId = (deployment) => {
     return deployment?.id || deployment?._id || deployment?.Id || id;
+  };
+
+  const getPlatformInfo = (platform) => {
+    if (!platform) return { name: 'Unknown', icon: null, color: '#6c757d' };
+    
+    const platformLower = platform.toLowerCase();
+    switch (platformLower) {
+      case 'vercel':
+        return { name: 'Vercel', icon: SiVercel, color: '#000000' };
+      case 'netlify':
+        return { name: 'Netlify', icon: SiNetlify, color: '#00C7B7' };
+      case 'cloudflare':
+        return { name: 'Cloudflare', icon: FaCloudflare, color: '#F38020' };
+      case 'githubpages':
+      case 'github':
+        return { name: 'GitHub Pages', icon: FaGithub, color: '#333333' };
+      default:
+        return { name: platform.charAt(0).toUpperCase() + platform.slice(1), icon: null, color: '#6c757d' };
+    }
   };
 
   if (loading && !deployment) {
@@ -134,6 +154,35 @@ const DeploymentDetail = () => {
                     </Badge>
                   </div>
                 </div>
+
+                {deployment.platform && (() => {
+                  const platformInfo = getPlatformInfo(deployment.platform);
+                  const PlatformIcon = platformInfo.icon;
+                  return (
+                    <div className="info-item-enhanced">
+                      <div className="info-icon-label">
+                        {PlatformIcon ? (
+                          <PlatformIcon className="info-icon" style={{ color: '#ffffff', fontSize: '1.3rem' }} />
+                        ) : (
+                          <svg className="info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ color: '#ffffff' }}>
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" strokeWidth="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21" strokeWidth="2"/>
+                            <line x1="12" y1="17" x2="12" y2="21" strokeWidth="2"/>
+                          </svg>
+                        )}
+                        <span className="info-label-enhanced">Platform</span>
+                      </div>
+                      <div className="info-value-enhanced">
+                        <span style={{ 
+                          color: '#ffffff',
+                          fontSize: '1rem'
+                        }}>
+                          {platformInfo.name}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {deployment.repoId && (
                   <div className="info-item-enhanced">
@@ -224,22 +273,49 @@ const DeploymentDetail = () => {
           </Card>
 
           {deployment.serviceUrl && (
-            <Card className="mb-4">
+            <Card className="mb-4" style={{ 
+              backgroundColor: '#1a4d3a', 
+              border: '1px solid #10b981',
+              borderRadius: '12px'
+            }}>
               <Card.Body>
-                <h5 className="mb-3">Live Deployment</h5>
+                <h5 className="mb-3" style={{ color: '#ffffff', fontWeight: '600' }}>Live Deployment</h5>
                 <a 
                   href={deployment.serviceUrl} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="deployment-link"
+                  style={{ color: '#ffffff', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                  onMouseEnter={(e) => {
+                    e.target.style.color = '#10b981';
+                    e.target.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.color = '#ffffff';
+                    e.target.style.textDecoration = 'none';
+                  }}
                 >
                   {deployment.serviceUrl}
-                  <FaExternalLinkAlt className="ms-2" size={12} />
+                  <FaExternalLinkAlt size={12} />
                 </a>
                 <Button 
-                  variant="primary" 
+                  variant="success" 
                   className="mt-3"
                   onClick={() => window.open(deployment.serviceUrl, '_blank')}
+                  style={{ 
+                    backgroundColor: '#10b981',
+                    borderColor: '#10b981',
+                    color: '#ffffff',
+                    fontWeight: '500'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = '#059669';
+                    e.target.style.borderColor = '#059669';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = '#10b981';
+                    e.target.style.borderColor = '#10b981';
+                  }}
                 >
                   View Live Site
                 </Button>

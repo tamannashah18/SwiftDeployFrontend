@@ -1,0 +1,103 @@
+.help-support-page {
+  min-height: 100vh;
+  background-color: #1a0033;
+  padding-left: 5rem; /* Account for sidebar */
+}
+
+.help-support-content {
+  padding: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.help-title {
+  color: #ffffff;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.help-subtitle {
+  color: #b8a3d9;
+  font-size: 1.1rem;
+  margin-bottom: 0;
+}
+
+.help-card {
+  background-color: #2d1b4e;
+  border: 1px solid #6c3fb5;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(108, 63, 181, 0.2);
+}
+
+.help-card .card-title {
+  color: #ffffff;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.help-card .form-label {
+  color: #ffffff;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+}
+
+.help-card .form-control:focus {
+  background-color: #2d1b4e;
+  border-color: #b89dff;
+  color: #ffffff;
+  box-shadow: 0 0 0 0.2rem rgba(184, 157, 255, 0.25);
+}
+
+.help-card .form-control::placeholder {
+  color: #6c757d;
+}
+
+.help-card .text-muted {
+  color: #b8a3d9 !important;
+}
+
+.submit-btn:hover {
+  background-color: #5a2f95 !important;
+  border-color: #5a2f95 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(108, 63, 181, 0.4);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.contact-info {
+  color: #b8a3d9;
+}
+
+.contact-info strong {
+  color: #ffffff;
+}
+
+.contact-info a:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .help-support-page {
+    padding-left: 0;
+  }
+
+  .help-support-content {
+    padding: 1rem;
+  }
+
+  .help-title {
+    font-size: 2rem;
+  }
+
+  .help-subtitle {
+    font-size: 1rem;
+  }
+}
+
