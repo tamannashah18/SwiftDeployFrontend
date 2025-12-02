@@ -214,9 +214,11 @@ export const updateDeploymentStatus = async (deploymentId, deploymentStatus) => 
 
 export const deleteDeployment = async (deploymentId) => {
   try {
-    const response = await apiClient.delete(`/deployments/${deploymentId}`);
+    // ⭐ FIXED: Use the correct UnifiedDeployment endpoint
+    const response = await apiClient.delete(`/unifieddeployment/deployments/${deploymentId}`);
     return response.data;
   } catch (error) {
+    console.error('Delete deployment error:', error);
     throw error.response?.data || error;
   }
 };
