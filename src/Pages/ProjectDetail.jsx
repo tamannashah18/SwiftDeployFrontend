@@ -4,7 +4,7 @@ import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
 import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash, FaCloudflare } from 'react-icons/fa';
 import { SiNetlify, SiVercel } from 'react-icons/si';
-import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment } from '../api/deployments';
+import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment,getFileContent } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
 import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
