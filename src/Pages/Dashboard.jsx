@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NavigationBar } from '../Components/NavigationBar';
-import { startGitHubLogin, startNetlifyLogin, getUserTokens } from '../api/auth';
+import { startGitHubLogin, startNetlifyLogin, getUserTokens, disconnectPlatform } from '../api/auth';
 import { getUserProjects } from '../api/deployments';
-import { FaGithub, FaNetworkWired, FaCloudflare, FaRocket } from 'react-icons/fa';
+import { FaGithub, FaNetworkWired, FaCloudflare, FaRocket, FaTachometerAlt } from 'react-icons/fa';
 import { SiNetlify, SiVercel } from 'react-icons/si';
 import '../css/Responsive.css';
 import '../css/Dashboard.css';
@@ -19,6 +19,7 @@ function Dashboard() {
     cloudflare: false,
   });
   const [loading, setLoading] = useState(true);
+  const [disconnecting, setDisconnecting] = useState(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -59,6 +60,26 @@ function Dashboard() {
     startNetlifyLogin();
   };
 
+  const handleDisconnect = async (platformKey) => {
+    if (!window.confirm(`Are you sure you want to disconnect ${platformKey}?`)) {
+      return;
+    }
+    
+    setDisconnecting(platformKey);
+    try {
+      await disconnectPlatform(platformKey);
+      setConnectedPlatforms(prev => ({
+        ...prev,
+        [platformKey]: false
+      }));
+    } catch (error) {
+      console.error('Error disconnecting platform:', error);
+      alert('Failed to disconnect platform. Please try again.');
+    } finally {
+      setDisconnecting(null);
+    }
+  };
+
   const platformCards = [
     { name: 'GitHub', icon: FaGithub, key: 'github', color: '#333', action: handleConnectGitHub },
     { name: 'Netlify', icon: SiNetlify, key: 'netlify', color: '#00C7B7', action: handleConnectNetlify },
@@ -80,10 +101,10 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-vh-100" style={{ backgroundColor: '#1a0033' }}>
+    <div className="min-vh-100 dashboard-page">
       <NavigationBar />
 
-      <div className="container-fluid py-4" style={{ marginLeft: '5rem', paddingRight: '2rem' }}>
+      <div className="dashboard-content container-fluid py-4">
         <div className="row mb-5">
           <div className="col-12">
             <h1 className="display-5 fw-bold mb-2" style={{ color: '#ffffff' }}>Welcome back, {user?.name || 'Developer'}</h1>
@@ -103,7 +124,7 @@ function Dashboard() {
                   onClick={() => navigate('/new-project')}
                 >
                   <div className="card-body">
-                    <FaRocket className="mb-2" />
+                    <FaRocket className="mb-2" size={28} />
                     <h5 className="card-title">New Deployment</h5>
                     <p className="card-text">Deploy a new project quickly</p>
                   </div>
@@ -115,7 +136,7 @@ function Dashboard() {
                   onClick={() => navigate('/projects')}
                 >
                   <div className="card-body">
-                    <FaNetworkWired className="mb-2" />
+                    <FaNetworkWired className="mb-2" size={28} />
                     <h5 className="card-title">View Projects</h5>
                     <p className="card-text">Manage your {projects.length} projects</p>
                   </div>
@@ -127,9 +148,7 @@ function Dashboard() {
                   onClick={() => navigate('/deployments')}
                 >
                   <div className="card-body">
-                    <div className="spinner-border" role="status">
-                      <span className="visually-hidden">Loading...</span>
-                    </div>
+                    <FaTachometerAlt className="mb-2" size={28} />
                     <h5 className="card-title">Monitor Deployments</h5>
                     <p className="card-text">Track deployment status</p>
                   </div>
@@ -145,9 +164,9 @@ function Dashboard() {
               <h2 className="h4 mb-0" style={{ color: '#ffffff' }}>Connected Platforms</h2>
               <small style={{ color: '#b8a3d9' }}>Connect platforms to enable deployments</small>
             </div>
-            <div className="row g-4">
+            <div className="row g-3">
               {platformCards.map((platform) => (
-                <div key={platform.key} className="col-sm-12 col-md-6 col-xl-4">
+                <div key={platform.key} className="col-12 col-sm-6 col-lg-3">
                   <div className="card border-0 shadow-sm h-100" style={{ backgroundColor: '#2d1b4e', border: '1px solid #6c3fb5' }}>
                     <div className="card-body">
                       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -168,8 +187,12 @@ function Dashboard() {
                         </button>
                       )}
                       {connectedPlatforms[platform.key] && (
-                        <button className="btn btn-sm btn-outline-danger mt-3 w-100" disabled>
-                          Disconnect
+                        <button 
+                          className="btn btn-sm btn-outline-danger mt-3 w-100"
+                          onClick={() => handleDisconnect(platform.key)}
+                          disabled={disconnecting === platform.key}
+                        >
+                          {disconnecting === platform.key ? 'Disconnecting...' : 'Disconnect'}
                         </button>
                       )}
                     </div>

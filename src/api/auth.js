@@ -88,4 +88,29 @@ export const savePlatformToken = async (platform, token) => {
     throw error.response?.data || error;
   }
 };
+
+export const disconnectPlatform = async (platform) => {
+  try {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if (!user?.id) {
+      throw new Error('User not found. Please log in again.');
+    }
+
+    // Send empty string to clear the token (reusing the same endpoint as savePlatformToken)
+    const response = await apiClient.post(
+      `/user/${user.id}/tokens/${platform}`,
+      JSON.stringify(""),
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error disconnecting platform:', error);
+    throw error.response?.data || error;
+  }
+};
+
 export { storeJwt, getStoredJwt };

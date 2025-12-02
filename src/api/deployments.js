@@ -30,6 +30,23 @@ export const getDeploymentStatus = async (projectId) => {
     throw error.response?.data || error;
   }
 };
+export const getLatestDeployment = async (repoId) => {
+  try {
+    const response = await apiClient.post('/deployments/latest', 
+      JSON.stringify({ repoId }), 
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching latest deployment:', error);
+    console.error('Error details:', error.response?.data);
+    throw error.response?.data || error;
+  }
+};
 
 export const pollDeployment = async (projectId, onUpdate, interval = 3000) => {
   let shouldStop = false;
