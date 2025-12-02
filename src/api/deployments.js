@@ -362,12 +362,24 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     }
   }
 };
-
 export const getFileContent = async (owner, repoName, path) => {
   try {
-    const response = await apiClient.get(`/unifieddeployment/file/${owner}/${repoName}/${path}`);
-    return response.data;
+    const response = await apiClient.get(`/unifieddeployment/file/${owner}/${repoName}/${encodeURIComponent(path)}`);
+    // If the response is a string, return it directly
+    if (typeof response.data === 'string') {
+      return response.data;
+    }
+    // If the response is an object with a content property, return that
+    if (response.data && typeof response.data === 'object' && 'content' in response.data) {
+      return response.data.content;
+    }
+    // Otherwise, return the full response data as a string
+    return JSON.stringify(response.data, null, 2);
   } catch (error) {
+    console.error('Error in getFileContent:', {
+      url: `/unifieddeployment/file/${owner}/${repoName}/${path}`,
+      error: error.response?.data || error.message
+    });
     throw error.response?.data || error;
   }
 };
