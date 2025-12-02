@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
-import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash } from 'react-icons/fa';
+import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash, FaCloudflare } from 'react-icons/fa';
+import { SiNetlify, SiVercel } from 'react-icons/si';
 import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
@@ -413,84 +414,138 @@ const ProjectDetail = () => {
               )}
 
               {/* Deployment History */}
-              <Card className="mt-4">
-                <Card.Body>
-                  <h5 className="mb-3">Deployment History</h5>
-                  {loadingDeployments ? (
-                    <div className="text-center py-3">
-                      <Spinner animation="border" size="sm" variant="primary" />
-                    </div>
-                  ) : allDeployments.length > 0 ? (
-                    <div className="list-group">
-                      {allDeployments.map((deployment, index) => {
-                        const deploymentId = deployment.id || deployment._id || deployment.Id;
-                        const status = deployment.status || 'unknown';
-                        const deployedAt = deployment.deployedAt ? new Date(deployment.deployedAt) : null;
-                        
-                        return (
-                          <div
-                            key={deploymentId || index}
-                            className="list-group-item d-flex justify-content-between align-items-start"
-                          >
-                            <div className="flex-grow-1">
-                              <div className="d-flex align-items-center mb-2">
-                                <Badge
-                                  bg={
-                                    status === 'completed' ? 'success' :
-                                    status === 'failed' ? 'danger' :
-                                    status === 'processing' ? 'warning' :
-                                    'secondary'
-                                  }
-                                  className="me-2"
-                                >
-                                  {status}
-                                </Badge>
-                                {deployment.serviceId && (
-                                  <span className="text-muted small me-2">
-                                    Service: {deployment.serviceId}
-                                  </span>
-                                )}
-                              </div>
-                              {deployment.serviceUrl && (
-                                <div className="mb-2">
-                                  <a
-                                    href={deployment.serviceUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-primary small"
-                                  >
-                                    {deployment.serviceUrl}
-                                    <FaExternalLinkAlt className="ms-1" size={10} />
-                                  </a>
-                                </div>
-                              )}
-                              {deployment.repoId && (
-                                <div className="text-muted small mb-1">
-                                  Repo: {deployment.repoId}
-                                </div>
-                              )}
+              <div className="mt-4" style={{ width: '100%', maxWidth: '100%', marginLeft: 0, marginRight: 0, paddingLeft: 0, paddingRight: 0 }}>
+                <h5 className="mb-3" style={{ color: '#ffffff' }}>Deployment History</h5>
+                {loadingDeployments ? (
+                  <div className="text-center py-3">
+                    <Spinner animation="border" size="sm" variant="primary" />
+                  </div>
+                ) : allDeployments.length > 0 ? (
+                  <div className="d-flex flex-column gap-3" style={{ width: '100%', maxWidth: '100%', marginLeft: 0, marginRight: 0 }}>
+                    {allDeployments.map((deployment, index) => {
+                      const deploymentId = deployment.id || deployment._id || deployment.Id;
+                      const status = deployment.status || 'unknown';
+                      const statusLower = status.toLowerCase();
+                      const isSuccess = statusLower === 'completed';
+                      const isFailed = statusLower === 'failed';
+                      const deployedAt = deployment.deployedAt ? new Date(deployment.deployedAt) : null;
+                      
+                      const getPlatformInfo = (platform) => {
+                        if (!platform) return { name: 'Unknown', icon: null };
+                        const platformLower = platform.toLowerCase();
+                        switch (platformLower) {
+                          case 'vercel':
+                            return { name: 'Vercel', icon: SiVercel };
+                          case 'netlify':
+                            return { name: 'Netlify', icon: SiNetlify };
+                          case 'cloudflare':
+                            return { name: 'Cloudflare', icon: FaCloudflare };
+                          case 'githubpages':
+                          case 'github':
+                            return { name: 'GitHub Pages', icon: FaGithub };
+                          default:
+                            return { name: platform.charAt(0).toUpperCase() + platform.slice(1), icon: null };
+                        }
+                      };
+                      
+                      const platformInfo = getPlatformInfo(deployment.platform);
+                      const PlatformIcon = platformInfo.icon;
+                      
+                      return (
+                        <Card
+                          key={deploymentId || index}
+                          className="w-100"
+                          style={{
+                            backgroundColor: '#2d1b4e',
+                            border: '1px solid #6c3fb5',
+                            borderRadius: '12px',
+                            width: '100%',
+                            maxWidth: '100%',
+                            margin: 0,
+                            marginLeft: 0,
+                            marginRight: 0,
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <Card.Body style={{ width: '100%', padding: '1.25rem', boxSizing: 'border-box' }}>
+                            <div className="d-flex align-items-center justify-content-between mb-3">
+                              <Badge
+                                bg={isSuccess ? 'success' : isFailed ? 'danger' : 'secondary'}
+                                style={{ fontSize: '1rem', padding: '0.5rem 1rem' }}
+                              >
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                              </Badge>
                               {deployedAt && (
-                                <div className="text-muted small">
-                                  Deployed: {deployedAt.toLocaleString()}
-                                </div>
-                              )}
-                              {deploymentId && (
-                                <div className="text-muted small font-monospace mt-1">
-                                  ID: {deploymentId}
-                                </div>
+                                <span style={{ color: '#ffffff', fontSize: '1rem' }}>
+                                  {deployedAt.toLocaleString()}
+                                </span>
                               )}
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <Alert variant="info" className="mb-0">
-                      No deployment history found for this project.
-                    </Alert>
-                  )}
-                </Card.Body>
-              </Card>
+                            
+                            {deployment.serviceUrl && (
+                              <div className="mb-3">
+                                <a
+                                  href={deployment.serviceUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{
+                                    color: '#ffffff',
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    fontSize: '1rem',
+                                    transition: 'color 0.2s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.target.style.color = isSuccess ? '#10b981' : isFailed ? '#ef4444' : '#b89dff';
+                                    e.target.style.textDecoration = 'underline';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.target.style.color = '#ffffff';
+                                    e.target.style.textDecoration = 'none';
+                                  }}
+                                >
+                                  {deployment.serviceUrl}
+                                  <FaExternalLinkAlt size={14} />
+                                </a>
+                              </div>
+                            )}
+                            
+                            {deployment.repoId && (
+                              <div style={{ color: '#b8a3d9', fontSize: '0.95rem', marginBottom: '0.5rem' }}>
+                                Repo: {deployment.repoId}
+                              </div>
+                            )}
+                            
+                            {deployment.platform && (
+                              <div className="d-flex align-items-center gap-2" style={{ marginBottom: '0.5rem' }}>
+                                {PlatformIcon && (
+                                  <PlatformIcon size={22} style={{ color: '#ffffff' }} />
+                                )}
+                                <span style={{ color: '#ffffff', fontSize: '1rem' }}>
+                                  {platformInfo.name}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {deploymentId && (
+                              <div style={{ color: '#b8a3d9', fontSize: '0.85rem', fontFamily: 'monospace', marginTop: '0.5rem' }}>
+                                ID: {deploymentId}
+                              </div>
+                            )}
+                          </Card.Body>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <Alert variant="info" className="mb-0">
+                    No deployment history found for this project.
+                  </Alert>
+                )}
+              </div>
             </div>
           )}
 
