@@ -24,6 +24,8 @@ const DeploymentModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deploymentConfig, setDeploymentConfig] = useState(null);
+  const [buildRisks, setBuildRisks] = useState([]);
+const [optimizations, setOptimizations] = useState([]);
   const [detectedTech, setDetectedTech] = useState({
     framework: '',
     frontendFramework: '',
@@ -119,6 +121,8 @@ const DeploymentModal = ({
       if (result.analysis) {
         setPlatforms(result.analysis.allSuggestions || []);
         setRecommendedPlatform(result.analysis.recommendedPlatform?.platform || null);
+        setBuildRisks(result.analysis.buildRisks || []);
+setOptimizations(result.analysis.optimizations || []);
 
         const tech = result.analysis.detectedTechnologies || {};
         const projectInfo = result.analysis.projectInfo || {};
@@ -543,129 +547,179 @@ const DeploymentModal = ({
         )}
 
         {/* Original select step for deploy-with-github */}
-        {step === 'select' && !isWithoutGitHub && (
-          <div>
-            <div className="mb-4">
-              <h5 className="mb-3" style={{ color: '#ffffff', fontWeight: '600' }}>
-                <FaCheckCircle style={{ color: '#10b981', marginRight: '8px' }} />
-                Detected Technologies
-              </h5>
-              <Card style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid #6c3fb5',
-                borderRadius: '12px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                width: '100%',
-                maxWidth: '100%',
-                margin: '0 auto',
-                backdropFilter: 'blur(8px)'
-              }}>
-                <Card.Body className="p-4" style={{ width: '100%', boxSizing: 'border-box' }}>
-                  <div className="d-flex flex-wrap gap-2 mb-3">
-                    {detectedTech.technologies.map((tech, index) => (
-                      <Badge
-                        key={index}
-                        style={{
-                          backgroundColor: '#6c3fb5',
-                          color: '#ffffff',
-                          padding: '8px 16px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          borderRadius: '6px'
-                        }}
-                      >
-                        {tech}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-4 pt-3" style={{ borderTop: '1px solid #6c3fb5' }}>
-                    <div className="row g-3" style={{ color: '#e0d6ff', fontSize: '14px' }}>
-                      <div className="col-md-4">
-                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
-                          Framework
-                        </div>
-                        <div>{detectedTech.framework}</div>
-                      </div>
-                      <div className="col-md-4">
-                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
-                          Build Tool
-                        </div>
-                        <div>{detectedTech.buildTool}</div>
-                      </div>
-                      <div className="col-md-4">
-                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
-                          Package Manager
-                        </div>
-                        <div>{detectedTech.packageManager}</div>
-                      </div>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </div>
-
-            <h5 className="mb-3" style={{ color: '#ffffff' }}>Select Deployment Platform</h5>
-
-            <div className="row g-3">
-              {platforms.map((platform, index) => {
-                const normalizedName = normalizePlatformName(platform.platform);
-                const config = platformConfig[normalizedName];
-                const Icon = config?.icon || FaGithub;
-                const isRecommended = platform.isRecommended;
-                const hasToken = tokens[normalizedName];
-
-                return (
-                  <div key={normalizedName || index} className="col-md-6">
-                    <Card
-                      onClick={() => handlePlatformSelect(platform)}
-                      style={{
-                        backgroundColor: '#2d1b4e',
-                        border: isRecommended ? '2px solid #b89dff' : '1px solid #6c3fb5',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                      }}
-                      className="h-100"
-                    >
-                      <Card.Body>
-                        <div className="mb-3">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <div className="d-flex align-items-center gap-2">
-                              <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
-                              <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
-                            </div>
-                            <Badge bg="dark" style={{ color: '#ffffff' }}>
-                              Score: {platform.score}/100
-                            </Badge>
-                          </div>
-                          {isRecommended && (
-                            <Badge bg="success" className="d-flex align-items-center gap-1 mt-2" style={{ width: 'fit-content' }}>
-                              <FaCheckCircle /> Recommended
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="mt-2">
-                          <p className="mb-2" style={{ color: '#ffffff' }}>{platform.reason}</p>
-                          <div className="d-flex flex-wrap gap-1">
-                            {platform.features?.map((feature, i) => (
-                              <Badge key={i} bg="info" className="me-1 mb-1" style={{ color: '#ffffff' }}>
-                                {feature}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <h6 style={{ color: '#ffffff', marginTop: '1rem' }}>{config?.name}</h6>
-                        <small style={{ color: hasToken ? '#4ade80' : '#f87171' }}>
-                          {hasToken ? '✓ Connected' : '✗ Not connected'}
-                        </small>
-                      </Card.Body>
-                    </Card>
-                  </div>
-                );
-              })}
+     {step === 'select' && !isWithoutGitHub && (
+  <div>
+    <div className="mb-4">
+      <h5 className="mb-3" style={{ color: '#ffffff', fontWeight: '600' }}>
+        <FaCheckCircle style={{ color: '#10b981', marginRight: '8px' }} />
+        Detected Technologies
+      </h5>
+      <Card style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        border: '1px solid #6c3fb5',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+        width: '100%',
+        maxWidth: '100%',
+        margin: '0 auto',
+        backdropFilter: 'blur(8px)'
+      }}>
+        <Card.Body className="p-4" style={{ width: '100%', boxSizing: 'border-box' }}>
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            {detectedTech.technologies.map((tech, index) => (
+              <Badge
+                key={index}
+                style={{
+                  backgroundColor: '#6c3fb5',
+                  color: '#ffffff',
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  borderRadius: '6px'
+                }}
+              >
+                {tech}
+              </Badge>
+            ))}
+          </div>
+          <div className="mt-4 pt-3" style={{ borderTop: '1px solid #6c3fb5' }}>
+            <div className="row g-3" style={{ color: '#e0d6ff', fontSize: '14px' }}>
+              <div className="col-md-4">
+                <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                  Framework
+                </div>
+                <div>{detectedTech.framework}</div>
+              </div>
+              <div className="col-md-4">
+                <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                  Build Tool
+                </div>
+                <div>{detectedTech.buildTool}</div>
+              </div>
+              <div className="col-md-4">
+                <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                  Package Manager
+                </div>
+                <div>{detectedTech.packageManager}</div>
+              </div>
             </div>
           </div>
-        )}
+        </Card.Body>
+      </Card>
+    </div>
 
+    {/* ⭐ BUILD RISKS + OPTIMIZATIONS (ADDED HERE ONLY) */}
+   {/* ⭐ COMPACT BUILD RISKS + OPTIMIZATIONS */}
+{(buildRisks.length > 0 || optimizations.length > 0) && (
+  <div className="mb-3" style={{ display: 'flex', gap: '20px' }}>
+
+    {/* ⚠ Issues */}
+    {buildRisks.length > 0 && (
+      <div style={{ flex: 1 }}>
+        <div style={{ 
+          color: '#ff6b6b', 
+          fontSize: '13px', 
+          fontWeight: '600',
+          marginBottom: '4px'
+        }}>
+          ⚠ Issues
+        </div>
+
+        {buildRisks.slice(0, 2).map((risk, i) => (
+          <div key={i} style={{ 
+            color: '#ffffff', 
+            fontSize: '12px',
+            opacity: 0.85 
+          }}>
+            • {risk.split('-')[0].split('.')[0]}
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* 🚀 Tips */}
+    {optimizations.length > 0 && (
+      <div style={{ flex: 1 }}>
+        <div style={{ 
+          color: '#4ade80', 
+          fontSize: '13px', 
+          fontWeight: '600',
+          marginBottom: '4px'
+        }}>
+          🚀 Tips
+        </div>
+
+        {optimizations.slice(0, 2).map((opt, i) => (
+          <div key={i} style={{ 
+            color: '#ffffff', 
+            fontSize: '12px',
+            opacity: 0.85 
+          }}>
+            • {opt.split('-')[0].split('.')[0]}
+          </div>
+        ))}
+      </div>
+    )}
+
+  </div>
+)}
+
+    <h5 className="mb-3" style={{ color: '#ffffff' }}>
+      Select Deployment Platform
+    </h5>
+
+    <div className="row g-3">
+      {platforms.map((platform, index) => {
+        const normalizedName = normalizePlatformName(platform.platform);
+        const config = platformConfig[normalizedName];
+        const Icon = config?.icon || FaGithub;
+        const isRecommended = platform.isRecommended;
+        const hasToken = tokens[normalizedName];
+
+        return (
+          <div key={normalizedName || index} className="col-md-6">
+            <Card
+              onClick={() => handlePlatformSelect(platform)}
+              style={{
+                backgroundColor: '#2d1b4e',
+                border: isRecommended ? '2px solid #b89dff' : '1px solid #6c3fb5',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              className="h-100"
+            >
+              <Card.Body>
+                <div className="mb-3">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-2">
+                      <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
+                      <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
+                    </div>
+                    <Badge bg="dark" style={{ color: '#ffffff' }}>
+                      Score: {platform.score}/100
+                    </Badge>
+                  </div>
+                  {isRecommended && (
+                    <Badge bg="success" className="d-flex align-items-center gap-1 mt-2">
+                      <FaCheckCircle /> Recommended
+                    </Badge>
+                  )}
+                </div>
+
+                <p className="mb-2" style={{ color: '#ffffff' }}>{platform.reason}</p>
+
+                <small style={{ color: hasToken ? '#4ade80' : '#f87171' }}>
+                  {hasToken ? '✓ Connected' : '✗ Not connected'}
+                </small>
+
+              </Card.Body>
+            </Card>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
         {step === 'oauth' && (
           <div className="text-center py-4">
             <h5 className="mb-4" style={{ color: '#ffffff' }}>
