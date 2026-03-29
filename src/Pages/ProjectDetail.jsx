@@ -260,6 +260,14 @@ const ProjectDetail = () => {
     }
 
     try {
+      const projectIdToUse =
+    project?._id ||     // Mongo ID (correct)
+    project?.id ||
+    project?.projectId ||
+    id;
+
+  console.log("FINAL DELETE ID:", projectIdToUse);
+
       await deleteProject(id);
       navigate('/projects');
     } catch (err) {

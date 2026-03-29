@@ -163,7 +163,7 @@ export const getProjectDetails = async (projectId) => {
 
 export const deleteProject = async (projectId) => {
   try {
-    const response = await apiClient.delete(`/projects/${projectId}`);
+    const response = await apiClient.delete(`/unifieddeployment/projects/${projectId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
