@@ -923,19 +923,7 @@ const ProjectDetail = () => {
                          </div>
                        </div>
 
-                       <div className="mt-3">
-                         <Button
-                           variant="outline-primary"
-                           size="sm"
-                           onClick={handleRegenerateConfig}
-                           disabled={loadingConfig}
-                         >
-                           {loadingConfig ? (
-                             <Spinner animation="border" size="sm" className="me-1" />
-                           ) : null}
-                           Regenerate Config
-                         </Button>
-                       </div>
+                       
                      </>
                   ) : (
                     <div className="config-empty">
