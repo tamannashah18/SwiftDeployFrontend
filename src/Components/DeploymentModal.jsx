@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Button, Card, Form, Alert, Spinner, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useRef } from 'react';
+import { Modal, Button, Card, Form, Alert, Spinner, Badge, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { SiNetlify, SiVercel, SiCloudflare } from 'react-icons/si';
-import { FaGithub, FaCheckCircle } from 'react-icons/fa';
-import { analyzeAndSuggest, deployToUnifiedPlatform } from '../api/deployments';
+import { FaGithub, FaCheckCircle, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import { analyzeAndSuggest, deployToUnifiedPlatform, scheduleUploadDeployment, scheduleGitHubDeployment } from '../api/deployments';
 import { getUserTokens, savePlatformToken, startNetlifyLogin } from '../api/auth';
 import ConfigurationForm from './ConfigurationForm';
 
@@ -36,6 +36,28 @@ const [optimizations, setOptimizations] = useState([]);
     projectType: '',
     isStatic: false
   });
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    const now = new Date();
+    // Offset to local time for datetime-local input
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
+  const [selectedTimeZone, setSelectedTimeZone] = useState(() => {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  });
+
+  // Get common time zones or all supported ones
+  const timeZones = React.useMemo(() => {
+    try {
+      return Intl.supportedValuesOf('timeZone');
+    } catch (e) {
+      // Fallback if not supported
+      return ['UTC', 'America/New_York', 'Europe/London', 'Asia/Kolkata', 'Asia/Tokyo', 'Australia/Sydney'];
+    }
+  }, []);
+
+  const dateInputRef = useRef(null);
 
   const platformConfig = {
     netlify: { name: 'Netlify', icon: SiNetlify, color: '#00C7B7', requiresOAuth: true },
@@ -413,6 +435,91 @@ setOptimizations(result.analysis.optimizations || []);
     }
   } catch (err) {
     setError(err.message || 'Deployment failed');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleSchedule = async () => {
+  if (!scheduledTime) {
+    setError('Please select a time');
+    return;
+  }
+
+  const selectedDate = new Date(scheduledTime);
+  const now = new Date();
+
+  if (selectedDate <= now) {
+    setError('Scheduled time must be in the future');
+    return;
+  }
+
+  setLoading(true);
+  setError('');
+
+  try {
+    const userData = JSON.parse(localStorage.getItem('user'));
+    const isNonGitHubUser = userData?.userType === 1 || userData?.userType === '1';
+    
+    // Check if project has a real GitHub repo
+    const hasGitHubRepo = project?.repoId && !project.repoId.startsWith('swiftdeployapp/');
+    const isUploadDeployment = isNonGitHubUser && !hasGitHubRepo;
+
+    // Convert local time to UTC based on selected time zone
+    const [datePart, timePart] = scheduledTime.split('T');
+    // Interpret the selected time as if it were UTC first, then adjust by the timezone offset
+    const baseDate = new Date(`${datePart}T${timePart}:00Z`);
+    
+    // Get offset for the selected timezone at that specific time
+    const getOffsetForDate = (date, tz) => {
+      try {
+        const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+        const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+        return (tzDate.getTime() - utcDate.getTime()) / 60000;
+      } catch (e) {
+        return 0; // Fallback to UTC if timezone is invalid
+      }
+    };
+
+    const offset = getOffsetForDate(baseDate, selectedTimeZone);
+    const finalDate = new Date(baseDate.getTime() - offset * 60000);
+    const utcTime = finalDate.toISOString();
+
+    if (isUploadDeployment) {
+      // payload matches UploadProjectRequest
+      const payload = {
+        userId: userData.id,
+        projectId: project._id || project.id,
+        projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+        repoName: project.repoId,
+        description: project.description || `Scheduled deployment via SwiftDeploy`,
+        platform: selectedPlatform,
+        zipPath: project.zipPath || project.ZipPath || '',
+        config: deploymentConfig || {}
+      };
+      
+      await scheduleUploadDeployment(payload, utcTime);
+    } else {
+      // payload matches GitHubDeployRequest
+      const payload = {
+        userId: userData.id,
+        projectId: project._id || project.id,
+        projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+        description: project.description || `Scheduled deployment via SwiftDeploy`,
+        platform: selectedPlatform,
+        gitHubRepo: project.repoId,
+        branch: project.branch || 'main',
+        config: deploymentConfig || {}
+      };
+      
+      await scheduleGitHubDeployment(payload, utcTime);
+    }
+
+    alert('Deployment scheduled successfully!');
+    onHide();
+  } catch (err) {
+    console.error('Scheduling error:', err);
+    setError(err.message || 'Scheduling failed');
   } finally {
     setLoading(false);
   }
@@ -863,32 +970,140 @@ setOptimizations(result.analysis.optimizations || []);
                 )}
               </Card.Body>
             </Card>
-            <div className="d-flex gap-3 mt-4 justify-content-center">
-              <Button
-                onClick={handleDeploy}
-                disabled={loading}
-                size="lg"
-                style={{
-                  backgroundColor: '#6c3fb5',
-                  borderColor: '#6c3fb5',
-                  minWidth: '150px',
-                  fontWeight: '500'
-                }}
-              >
-                {loading ? <Spinner animation="border" size="sm" /> : 'Deploy Now'}
-              </Button>
-              <Button
-                variant="outline-light"
-                onClick={() => setStep('config')}
-                disabled={loading}
-                size="lg"
-                style={{
-                  minWidth: '150px',
-                  fontWeight: '500'
-                }}
-              >
-                Back
-              </Button>
+            <div className="mt-4">
+              {!showTimePicker ? (
+                <div className="d-flex gap-3 justify-content-center">
+                  <Button
+                    onClick={handleDeploy}
+                    disabled={loading}
+                    size="lg"
+                    style={{
+                      backgroundColor: '#6c3fb5',
+                      borderColor: '#6c3fb5',
+                      minWidth: '150px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {loading ? <Spinner animation="border" size="sm" /> : 'Deploy Now'}
+                  </Button>
+                  <Button
+                    variant="outline-info"
+                    onClick={() => setShowTimePicker(true)}
+                    disabled={loading}
+                    size="lg"
+                    style={{
+                      minWidth: '150px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    <FaCalendarAlt className="me-2" /> Deploy Later
+                  </Button>
+                  <Button
+                    variant="outline-light"
+                    onClick={() => setStep('config')}
+                    disabled={loading}
+                    size="lg"
+                    style={{
+                      minWidth: '120px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Back
+                  </Button>
+                </div>
+              ) : (
+                <div className="p-4 rounded" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid #6c3fb5' }}>
+                  <h6 className="mb-3 d-flex align-items-center" style={{ color: '#b89dff' }}>
+                    <FaClock className="me-2" /> Schedule Deployment Time
+                  </h6>
+                  
+                  <div className="row g-3">
+                    <div className="col-md-7">
+                      <Form.Group className="mb-3">
+                        <Form.Label style={{ color: '#b8a3d9', fontSize: '13px' }}>Appointment Time</Form.Label>
+                        <InputGroup>
+                          <InputGroup.Text 
+                            onClick={() => {
+                              if (dateInputRef.current && dateInputRef.current.showPicker) {
+                                dateInputRef.current.showPicker();
+                              }
+                            }}
+                            style={{ 
+                              backgroundColor: '#1a0033', 
+                              border: '1px solid #6c3fb5', 
+                              color: '#b89dff',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <FaCalendarAlt />
+                          </InputGroup.Text>
+                          <Form.Control
+                            ref={dateInputRef}
+                            type="datetime-local"
+                            value={scheduledTime}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            style={{
+                              backgroundColor: '#1a0033',
+                              color: '#ffffff',
+                              border: '1px solid #6c3fb5',
+                              borderLeft: 'none',
+                              fontSize: '15px'
+                            }}
+                          />
+                        </InputGroup>
+                      </Form.Group>
+                    </div>
+                    
+                    <div className="col-md-5">
+                      <Form.Group className="mb-3">
+                        <Form.Label style={{ color: '#b8a3d9', fontSize: '13px' }}>Time Zone</Form.Label>
+                        <Form.Select
+                          value={selectedTimeZone}
+                          onChange={(e) => setSelectedTimeZone(e.target.value)}
+                          style={{
+                            backgroundColor: '#1a0033',
+                            color: '#ffffff',
+                            border: '1px solid #6c3fb5',
+                            fontSize: '14px'
+                          }}
+                        >
+                          {timeZones.map((tz) => (
+                            <option key={tz} value={tz}>
+                              {tz}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Form.Group>
+                    </div>
+                  </div>
+
+                  <p className="mb-3" style={{ color: '#b8a3d9', fontSize: '12px' }}>
+                    Deployment will be scheduled for: <strong>{new Date(scheduledTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</strong> in <strong>{selectedTimeZone}</strong>.
+                  </p>
+
+                  <div className="d-flex gap-2 mt-3">
+                    <Button
+                      onClick={handleSchedule}
+                      disabled={loading}
+                      style={{
+                        backgroundColor: '#10b981',
+                        borderColor: '#10b981',
+                        flex: 1,
+                        fontWeight: '600'
+                      }}
+                    >
+                      {loading ? <Spinner animation="border" size="sm" /> : 'Confirm Schedule'}
+                    </Button>
+                    <Button
+                      variant="outline-light"
+                      onClick={() => setShowTimePicker(false)}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

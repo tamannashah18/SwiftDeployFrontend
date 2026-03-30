@@ -4,10 +4,11 @@ import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
 import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash, FaCloudflare } from 'react-icons/fa';
 import { SiNetlify, SiVercel } from 'react-icons/si';
-import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment, getFileContent } from '../api/deployments';
+import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment, getFileContent, getScheduledDeployments } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
 import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
+import { FaClock, FaCalendarAlt } from 'react-icons/fa';
 import '../css/ProjectDetail.css';
 
 const ProjectDetail = () => {
@@ -25,6 +26,8 @@ const ProjectDetail = () => {
   const [configContent, setConfigContent] = useState('');
   const [configFilePath, setConfigFilePath] = useState('');
   const [loadingConfig, setLoadingConfig] = useState(false);
+  const [scheduledDeployments, setScheduledDeployments] = useState([]);
+  const [loadingScheduled, setLoadingScheduled] = useState(false);
 
   // ⭐ 1. Fetch project details on mount
   useEffect(() => {
@@ -237,6 +240,28 @@ const ProjectDetail = () => {
     fetchConfigContent();
   }, [activeTab, project?.configFileUrl, deploymentInfo?.configFileUrl]);
 
+  // ⭐ 8. Fetch and poll scheduled deployments
+  useEffect(() => {
+    let interval;
+    if (activeTab === 'upcoming' && id) {
+      const fetchScheduled = async () => {
+        try {
+          if (scheduledDeployments.length === 0) setLoadingScheduled(true);
+          const data = await getScheduledDeployments(id);
+          setScheduledDeployments(Array.isArray(data) ? data : []);
+        } catch (err) {
+          console.warn('Failed to fetch scheduled deployments:', err);
+        } finally {
+          setLoadingScheduled(false);
+        }
+      };
+
+      fetchScheduled();
+      interval = setInterval(fetchScheduled, 10000); // Poll every 10 seconds
+    }
+    return () => clearInterval(interval);
+  }, [activeTab, id]);
+
   const fetchProjectDetails = async () => {
     try {
       setLoading(true);
@@ -445,6 +470,12 @@ const ProjectDetail = () => {
             onClick={() => setActiveTab('configuration')}
           >
             Configuration
+          </div>
+          <div 
+            className={`tab ${activeTab === 'upcoming' ? 'active' : ''}`}
+            onClick={() => setActiveTab('upcoming')}
+          >
+            Upcoming Deployments
           </div>
         </div>
 
@@ -781,6 +812,75 @@ const ProjectDetail = () => {
                   </Alert>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'upcoming' && (
+            <div className="upcoming-deployments">
+              <h5 className="mb-3" style={{ color: '#ffffff' }}>Upcoming Deployments</h5>
+              {loadingScheduled && scheduledDeployments.length === 0 ? (
+                <div className="text-center py-5">
+                  <Spinner animation="border" variant="primary" />
+                  <p className="mt-2" style={{ color: '#b8a3d9' }}>Checking for scheduled deployments...</p>
+                </div>
+              ) : scheduledDeployments.length > 0 ? (
+                <div className="d-flex flex-column gap-3">
+                  {scheduledDeployments.map((deployment, index) => {
+                    const scheduledTime = deployment.scheduledTime ? new Date(deployment.scheduledTime) : null;
+                    const isExecuted = deployment.isExecuted;
+                    const status = deployment.status || 'Pending';
+                    
+                    return (
+                      <Card 
+                        key={deployment.id || index}
+                        style={{
+                          backgroundColor: '#2d1b4e',
+                          border: '1px solid #6c3fb5',
+                          borderRadius: '12px'
+                        }}
+                      >
+                        <Card.Body>
+                          <div className="d-flex justify-content-between align-items-start mb-3">
+                            <div>
+                              <Badge bg={isExecuted ? 'success' : 'info'} className="mb-2">
+                                {status.charAt(0).toUpperCase() + status.slice(1)}
+                              </Badge>
+                              <h6 style={{ color: '#ffffff' }} className="mb-1">
+                                {deployment.platform?.toUpperCase() || 'UNKNOWN PLATFORM'} Deployment
+                              </h6>
+                            </div>
+                            <div className="text-end">
+                              <div className="d-flex align-items-center gap-2" style={{ color: '#b89dff' }}>
+                                <FaClock size={14} />
+                                <span style={{ fontSize: '0.9rem' }}>
+                                  {scheduledTime ? scheduledTime.toLocaleString() : 'Not set'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div style={{ color: '#b8a3d9', fontSize: '0.9rem' }}>
+                            <FaCalendarAlt size={14} className="me-2" />
+                            Target: {deployment.platform}
+                          </div>
+                          {deployment.isExecuted && (
+                            <div className="mt-2 text-success" style={{ fontSize: '0.85rem' }}>
+                              ✓ Executed - Refreh implementation to see in history.
+                            </div>
+                          )}
+                        </Card.Body>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-5 text-center">
+                  <FaCalendarAlt size={48} style={{ color: '#b8a3d9', opacity: 0.3, marginBottom: '1rem' }} />
+                  <p style={{ color: '#b8a3d9' }}>No upcoming deployments scheduled for this project.</p>
+                  <Button variant="outline-primary" onClick={() => setShowDeployModal(true)} size="sm">
+                    Schedule One Now
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

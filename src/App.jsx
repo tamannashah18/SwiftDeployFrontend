@@ -25,6 +25,7 @@ import ProjectDetail from './Pages/ProjectDetail';
 import Deployments from './Pages/Deployments';
 import DeploymentDetail from './Pages/DeploymentDetail';
 import HelpSupport from './Pages/HelpSupport';
+import DeploymentToastProvider from './Components/DeploymentToast';
  
 function App() {
   const AuthCallbackWrapper = () => {
@@ -33,6 +34,8 @@ function App() {
 };
   return (
     <div className="App d-flex flex-column min-vh-100">
+      {/* Global real-time notifications for scheduled deployments */}
+      <DeploymentToastProvider />
       <main className="flex-grow-1">
         <Routes>
           <Route path="/" element={<Landing />} />
