@@ -163,7 +163,7 @@ export const getProjectDetails = async (projectId) => {
 
 export const deleteProject = async (projectId) => {
   try {
-    const response = await apiClient.delete(`/projects/${projectId}`);
+    const response = await apiClient.delete(`/unifieddeployment/projects/${projectId}`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
@@ -172,7 +172,7 @@ export const deleteProject = async (projectId) => {
 export const regenerateConfig = async (projectId, config) => {
   try {
     console.log('regenerateConfig called with:', { projectId, config });
-    
+
     // Ensure config has at least ProjectName and other required fields
     // Spread config first, then override with defaults if missing
     const configToSend = {
@@ -183,17 +183,17 @@ export const regenerateConfig = async (projectId, config) => {
       InstallCommand: config.InstallCommand || config.installCommand || '',
       Framework: config.Framework || config.framework || 'static'
     };
-    
+
     // Ensure ProjectName is set and not empty (required by backend)
     if (!configToSend.ProjectName || configToSend.ProjectName.trim() === '') {
       throw new Error('ProjectName is required but was not provided or is empty');
     }
-    
+
     // Final override to ensure ProjectName is always set correctly
     configToSend.ProjectName = configToSend.ProjectName.trim();
-    
+
     console.log('Sending config to backend:', configToSend);
-    
+
     const response = await apiClient.post(
       `/unifieddeployment/regenerate-config/${projectId}`,
       configToSend,
@@ -408,3 +408,33 @@ export const getFileContent = async (owner, repoName, path) => {
     throw error.response?.data || error;
   }
 };
+
+export const scheduleUploadDeployment = async (requestData, scheduledTime) => {
+  try {
+    // scheduledTime should be a UTC ISO string
+    const response = await apiClient.post(`/unifieddeployment/schedule-upload?scheduledTime=${scheduledTime}`, requestData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const scheduleGitHubDeployment = async (requestData, scheduledTime) => {
+  try {
+    // scheduledTime should be a UTC ISO string
+    const response = await apiClient.post(`/unifieddeployment/schedule-github?scheduledTime=${scheduledTime}`, requestData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getScheduledDeployments = async (id) => {
+  try {
+    const response = await apiClient.get(`/deployments/scheduled/${id}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, Button, Card, Form, Alert, Spinner, Badge } from 'react-bootstrap';
+import React, { useState, useEffect, useRef } from 'react';
+import { Modal, Button, Card, Form, Alert, Spinner, Badge, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { SiNetlify, SiVercel, SiCloudflare } from 'react-icons/si';
-import { FaGithub, FaCheckCircle } from 'react-icons/fa';
-import { analyzeAndSuggest, deployToUnifiedPlatform } from '../api/deployments';
+import { FaGithub, FaCheckCircle, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import { analyzeAndSuggest, deployToUnifiedPlatform, scheduleUploadDeployment, scheduleGitHubDeployment } from '../api/deployments';
 import { getUserTokens, savePlatformToken, startNetlifyLogin } from '../api/auth';
 import ConfigurationForm from './ConfigurationForm';
 
@@ -24,6 +24,8 @@ const DeploymentModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deploymentConfig, setDeploymentConfig] = useState(null);
+  const [buildRisks, setBuildRisks] = useState([]);
+const [optimizations, setOptimizations] = useState([]);
   const [detectedTech, setDetectedTech] = useState({
     framework: '',
     frontendFramework: '',
@@ -34,6 +36,28 @@ const DeploymentModal = ({
     projectType: '',
     isStatic: false
   });
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [scheduledTime, setScheduledTime] = useState(() => {
+    const now = new Date();
+    // Offset to local time for datetime-local input
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
+  const [selectedTimeZone, setSelectedTimeZone] = useState(() => {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  });
+
+  // Get common time zones or all supported ones
+  const timeZones = React.useMemo(() => {
+    try {
+      return Intl.supportedValuesOf('timeZone');
+    } catch (e) {
+      // Fallback if not supported
+      return ['UTC', 'America/New_York', 'Europe/London', 'Asia/Kolkata', 'Asia/Tokyo', 'Australia/Sydney'];
+    }
+  }, []);
+
+  const dateInputRef = useRef(null);
 
   const platformConfig = {
     netlify: { name: 'Netlify', icon: SiNetlify, color: '#00C7B7', requiresOAuth: true },
@@ -119,6 +143,8 @@ const DeploymentModal = ({
       if (result.analysis) {
         setPlatforms(result.analysis.allSuggestions || []);
         setRecommendedPlatform(result.analysis.recommendedPlatform?.platform || null);
+        setBuildRisks(result.analysis.buildRisks || []);
+setOptimizations(result.analysis.optimizations || []);
 
         const tech = result.analysis.detectedTechnologies || {};
         const projectInfo = result.analysis.projectInfo || {};
@@ -414,6 +440,91 @@ const DeploymentModal = ({
   }
 };
 
+const handleSchedule = async () => {
+  if (!scheduledTime) {
+    setError('Please select a time');
+    return;
+  }
+
+  const selectedDate = new Date(scheduledTime);
+  const now = new Date();
+
+  if (selectedDate <= now) {
+    setError('Scheduled time must be in the future');
+    return;
+  }
+
+  setLoading(true);
+  setError('');
+
+  try {
+    const userData = JSON.parse(localStorage.getItem('user'));
+    const isNonGitHubUser = userData?.userType === 1 || userData?.userType === '1';
+    
+    // Check if project has a real GitHub repo
+    const hasGitHubRepo = project?.repoId && !project.repoId.startsWith('swiftdeployapp/');
+    const isUploadDeployment = isNonGitHubUser && !hasGitHubRepo;
+
+    // Convert local time to UTC based on selected time zone
+    const [datePart, timePart] = scheduledTime.split('T');
+    // Interpret the selected time as if it were UTC first, then adjust by the timezone offset
+    const baseDate = new Date(`${datePart}T${timePart}:00Z`);
+    
+    // Get offset for the selected timezone at that specific time
+    const getOffsetForDate = (date, tz) => {
+      try {
+        const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
+        const tzDate = new Date(date.toLocaleString('en-US', { timeZone: tz }));
+        return (tzDate.getTime() - utcDate.getTime()) / 60000;
+      } catch (e) {
+        return 0; // Fallback to UTC if timezone is invalid
+      }
+    };
+
+    const offset = getOffsetForDate(baseDate, selectedTimeZone);
+    const finalDate = new Date(baseDate.getTime() - offset * 60000);
+    const utcTime = finalDate.toISOString();
+
+    if (isUploadDeployment) {
+      // payload matches UploadProjectRequest
+      const payload = {
+        userId: userData.id,
+        projectId: project._id || project.id,
+        projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+        repoName: project.repoId,
+        description: project.description || `Scheduled deployment via SwiftDeploy`,
+        platform: selectedPlatform,
+        zipPath: project.zipPath || project.ZipPath || '',
+        config: deploymentConfig || {}
+      };
+      
+      await scheduleUploadDeployment(payload, utcTime);
+    } else {
+      // payload matches GitHubDeployRequest
+      const payload = {
+        userId: userData.id,
+        projectId: project._id || project.id,
+        projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+        description: project.description || `Scheduled deployment via SwiftDeploy`,
+        platform: selectedPlatform,
+        gitHubRepo: project.repoId,
+        branch: project.branch || 'main',
+        config: deploymentConfig || {}
+      };
+      
+      await scheduleGitHubDeployment(payload, utcTime);
+    }
+
+    alert('Deployment scheduled successfully!');
+    onHide();
+  } catch (err) {
+    console.error('Scheduling error:', err);
+    setError(err.message || 'Scheduling failed');
+  } finally {
+    setLoading(false);
+  }
+};
+
   const handleClose = () => {
     setStep('analyze');
     setSelectedPlatform(null);
@@ -543,129 +654,179 @@ const DeploymentModal = ({
         )}
 
         {/* Original select step for deploy-with-github */}
-        {step === 'select' && !isWithoutGitHub && (
-          <div>
-            <div className="mb-4">
-              <h5 className="mb-3" style={{ color: '#ffffff', fontWeight: '600' }}>
-                <FaCheckCircle style={{ color: '#10b981', marginRight: '8px' }} />
-                Detected Technologies
-              </h5>
-              <Card style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid #6c3fb5',
-                borderRadius: '12px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                width: '100%',
-                maxWidth: '100%',
-                margin: '0 auto',
-                backdropFilter: 'blur(8px)'
-              }}>
-                <Card.Body className="p-4" style={{ width: '100%', boxSizing: 'border-box' }}>
-                  <div className="d-flex flex-wrap gap-2 mb-3">
-                    {detectedTech.technologies.map((tech, index) => (
-                      <Badge
-                        key={index}
-                        style={{
-                          backgroundColor: '#6c3fb5',
-                          color: '#ffffff',
-                          padding: '8px 16px',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                          borderRadius: '6px'
-                        }}
-                      >
-                        {tech}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="mt-4 pt-3" style={{ borderTop: '1px solid #6c3fb5' }}>
-                    <div className="row g-3" style={{ color: '#e0d6ff', fontSize: '14px' }}>
-                      <div className="col-md-4">
-                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
-                          Framework
-                        </div>
-                        <div>{detectedTech.framework}</div>
-                      </div>
-                      <div className="col-md-4">
-                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
-                          Build Tool
-                        </div>
-                        <div>{detectedTech.buildTool}</div>
-                      </div>
-                      <div className="col-md-4">
-                        <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
-                          Package Manager
-                        </div>
-                        <div>{detectedTech.packageManager}</div>
-                      </div>
-                    </div>
-                  </div>
-                </Card.Body>
-              </Card>
-            </div>
-
-            <h5 className="mb-3" style={{ color: '#ffffff' }}>Select Deployment Platform</h5>
-
-            <div className="row g-3">
-              {platforms.map((platform, index) => {
-                const normalizedName = normalizePlatformName(platform.platform);
-                const config = platformConfig[normalizedName];
-                const Icon = config?.icon || FaGithub;
-                const isRecommended = platform.isRecommended;
-                const hasToken = tokens[normalizedName];
-
-                return (
-                  <div key={normalizedName || index} className="col-md-6">
-                    <Card
-                      onClick={() => handlePlatformSelect(platform)}
-                      style={{
-                        backgroundColor: '#2d1b4e',
-                        border: isRecommended ? '2px solid #b89dff' : '1px solid #6c3fb5',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                      }}
-                      className="h-100"
-                    >
-                      <Card.Body>
-                        <div className="mb-3">
-                          <div className="d-flex align-items-center justify-content-between">
-                            <div className="d-flex align-items-center gap-2">
-                              <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
-                              <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
-                            </div>
-                            <Badge bg="dark" style={{ color: '#ffffff' }}>
-                              Score: {platform.score}/100
-                            </Badge>
-                          </div>
-                          {isRecommended && (
-                            <Badge bg="success" className="d-flex align-items-center gap-1 mt-2" style={{ width: 'fit-content' }}>
-                              <FaCheckCircle /> Recommended
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="mt-2">
-                          <p className="mb-2" style={{ color: '#ffffff' }}>{platform.reason}</p>
-                          <div className="d-flex flex-wrap gap-1">
-                            {platform.features?.map((feature, i) => (
-                              <Badge key={i} bg="info" className="me-1 mb-1" style={{ color: '#ffffff' }}>
-                                {feature}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                        <h6 style={{ color: '#ffffff', marginTop: '1rem' }}>{config?.name}</h6>
-                        <small style={{ color: hasToken ? '#4ade80' : '#f87171' }}>
-                          {hasToken ? '✓ Connected' : '✗ Not connected'}
-                        </small>
-                      </Card.Body>
-                    </Card>
-                  </div>
-                );
-              })}
+     {step === 'select' && !isWithoutGitHub && (
+  <div>
+    <div className="mb-4">
+      <h5 className="mb-3" style={{ color: '#ffffff', fontWeight: '600' }}>
+        <FaCheckCircle style={{ color: '#10b981', marginRight: '8px' }} />
+        Detected Technologies
+      </h5>
+      <Card style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+        border: '1px solid #6c3fb5',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+        width: '100%',
+        maxWidth: '100%',
+        margin: '0 auto',
+        backdropFilter: 'blur(8px)'
+      }}>
+        <Card.Body className="p-4" style={{ width: '100%', boxSizing: 'border-box' }}>
+          <div className="d-flex flex-wrap gap-2 mb-3">
+            {detectedTech.technologies.map((tech, index) => (
+              <Badge
+                key={index}
+                style={{
+                  backgroundColor: '#6c3fb5',
+                  color: '#ffffff',
+                  padding: '8px 16px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  borderRadius: '6px'
+                }}
+              >
+                {tech}
+              </Badge>
+            ))}
+          </div>
+          <div className="mt-4 pt-3" style={{ borderTop: '1px solid #6c3fb5' }}>
+            <div className="row g-3" style={{ color: '#e0d6ff', fontSize: '14px' }}>
+              <div className="col-md-4">
+                <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                  Framework
+                </div>
+                <div>{detectedTech.framework}</div>
+              </div>
+              <div className="col-md-4">
+                <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                  Build Tool
+                </div>
+                <div>{detectedTech.buildTool}</div>
+              </div>
+              <div className="col-md-4">
+                <div style={{ color: '#b89dff', fontWeight: '600', marginBottom: '4px' }}>
+                  Package Manager
+                </div>
+                <div>{detectedTech.packageManager}</div>
+              </div>
             </div>
           </div>
-        )}
+        </Card.Body>
+      </Card>
+    </div>
 
+    {/* ⭐ BUILD RISKS + OPTIMIZATIONS (ADDED HERE ONLY) */}
+   {/* ⭐ COMPACT BUILD RISKS + OPTIMIZATIONS */}
+{(buildRisks.length > 0 || optimizations.length > 0) && (
+  <div className="mb-3" style={{ display: 'flex', gap: '20px' }}>
+
+    {/* ⚠ Issues */}
+    {buildRisks.length > 0 && (
+      <div style={{ flex: 1 }}>
+        <div style={{ 
+          color: '#ff6b6b', 
+          fontSize: '13px', 
+          fontWeight: '600',
+          marginBottom: '4px'
+        }}>
+          ⚠ Issues
+        </div>
+
+        {buildRisks.slice(0, 2).map((risk, i) => (
+          <div key={i} style={{ 
+            color: '#ffffff', 
+            fontSize: '12px',
+            opacity: 0.85 
+          }}>
+            • {risk.split('-')[0].split('.')[0]}
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* 🚀 Tips */}
+    {optimizations.length > 0 && (
+      <div style={{ flex: 1 }}>
+        <div style={{ 
+          color: '#4ade80', 
+          fontSize: '13px', 
+          fontWeight: '600',
+          marginBottom: '4px'
+        }}>
+          🚀 Tips
+        </div>
+
+        {optimizations.slice(0, 2).map((opt, i) => (
+          <div key={i} style={{ 
+            color: '#ffffff', 
+            fontSize: '12px',
+            opacity: 0.85 
+          }}>
+            • {opt.split('-')[0].split('.')[0]}
+          </div>
+        ))}
+      </div>
+    )}
+
+  </div>
+)}
+
+    <h5 className="mb-3" style={{ color: '#ffffff' }}>
+      Select Deployment Platform
+    </h5>
+
+    <div className="row g-3">
+      {platforms.map((platform, index) => {
+        const normalizedName = normalizePlatformName(platform.platform);
+        const config = platformConfig[normalizedName];
+        const Icon = config?.icon || FaGithub;
+        const isRecommended = platform.isRecommended;
+        const hasToken = tokens[normalizedName];
+
+        return (
+          <div key={normalizedName || index} className="col-md-6">
+            <Card
+              onClick={() => handlePlatformSelect(platform)}
+              style={{
+                backgroundColor: '#2d1b4e',
+                border: isRecommended ? '2px solid #b89dff' : '1px solid #6c3fb5',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+              className="h-100"
+            >
+              <Card.Body>
+                <div className="mb-3">
+                  <div className="d-flex align-items-center justify-content-between">
+                    <div className="d-flex align-items-center gap-2">
+                      <Icon size={24} style={{ color: config?.color || '#ffffff' }} />
+                      <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
+                    </div>
+                    <Badge bg="dark" style={{ color: '#ffffff' }}>
+                      Score: {platform.score}/100
+                    </Badge>
+                  </div>
+                  {isRecommended && (
+                    <Badge bg="success" className="d-flex align-items-center gap-1 mt-2">
+                      <FaCheckCircle /> Recommended
+                    </Badge>
+                  )}
+                </div>
+
+                <p className="mb-2" style={{ color: '#ffffff' }}>{platform.reason}</p>
+
+                <small style={{ color: hasToken ? '#4ade80' : '#f87171' }}>
+                  {hasToken ? '✓ Connected' : '✗ Not connected'}
+                </small>
+
+              </Card.Body>
+            </Card>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
         {step === 'oauth' && (
           <div className="text-center py-4">
             <h5 className="mb-4" style={{ color: '#ffffff' }}>
@@ -809,32 +970,140 @@ const DeploymentModal = ({
                 )}
               </Card.Body>
             </Card>
-            <div className="d-flex gap-3 mt-4 justify-content-center">
-              <Button
-                onClick={handleDeploy}
-                disabled={loading}
-                size="lg"
-                style={{
-                  backgroundColor: '#6c3fb5',
-                  borderColor: '#6c3fb5',
-                  minWidth: '150px',
-                  fontWeight: '500'
-                }}
-              >
-                {loading ? <Spinner animation="border" size="sm" /> : 'Deploy Now'}
-              </Button>
-              <Button
-                variant="outline-light"
-                onClick={() => setStep('config')}
-                disabled={loading}
-                size="lg"
-                style={{
-                  minWidth: '150px',
-                  fontWeight: '500'
-                }}
-              >
-                Back
-              </Button>
+            <div className="mt-4">
+              {!showTimePicker ? (
+                <div className="d-flex gap-3 justify-content-center">
+                  <Button
+                    onClick={handleDeploy}
+                    disabled={loading}
+                    size="lg"
+                    style={{
+                      backgroundColor: '#6c3fb5',
+                      borderColor: '#6c3fb5',
+                      minWidth: '150px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {loading ? <Spinner animation="border" size="sm" /> : 'Deploy Now'}
+                  </Button>
+                  <Button
+                    variant="outline-info"
+                    onClick={() => setShowTimePicker(true)}
+                    disabled={loading}
+                    size="lg"
+                    style={{
+                      minWidth: '150px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    <FaCalendarAlt className="me-2" /> Deploy Later
+                  </Button>
+                  <Button
+                    variant="outline-light"
+                    onClick={() => setStep('config')}
+                    disabled={loading}
+                    size="lg"
+                    style={{
+                      minWidth: '120px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Back
+                  </Button>
+                </div>
+              ) : (
+                <div className="p-4 rounded" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)', border: '1px solid #6c3fb5' }}>
+                  <h6 className="mb-3 d-flex align-items-center" style={{ color: '#b89dff' }}>
+                    <FaClock className="me-2" /> Schedule Deployment Time
+                  </h6>
+                  
+                  <div className="row g-3">
+                    <div className="col-md-7">
+                      <Form.Group className="mb-3">
+                        <Form.Label style={{ color: '#b8a3d9', fontSize: '13px' }}>Appointment Time</Form.Label>
+                        <InputGroup>
+                          <InputGroup.Text 
+                            onClick={() => {
+                              if (dateInputRef.current && dateInputRef.current.showPicker) {
+                                dateInputRef.current.showPicker();
+                              }
+                            }}
+                            style={{ 
+                              backgroundColor: '#1a0033', 
+                              border: '1px solid #6c3fb5', 
+                              color: '#b89dff',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <FaCalendarAlt />
+                          </InputGroup.Text>
+                          <Form.Control
+                            ref={dateInputRef}
+                            type="datetime-local"
+                            value={scheduledTime}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            style={{
+                              backgroundColor: '#1a0033',
+                              color: '#ffffff',
+                              border: '1px solid #6c3fb5',
+                              borderLeft: 'none',
+                              fontSize: '15px'
+                            }}
+                          />
+                        </InputGroup>
+                      </Form.Group>
+                    </div>
+                    
+                    <div className="col-md-5">
+                      <Form.Group className="mb-3">
+                        <Form.Label style={{ color: '#b8a3d9', fontSize: '13px' }}>Time Zone</Form.Label>
+                        <Form.Select
+                          value={selectedTimeZone}
+                          onChange={(e) => setSelectedTimeZone(e.target.value)}
+                          style={{
+                            backgroundColor: '#1a0033',
+                            color: '#ffffff',
+                            border: '1px solid #6c3fb5',
+                            fontSize: '14px'
+                          }}
+                        >
+                          {timeZones.map((tz) => (
+                            <option key={tz} value={tz}>
+                              {tz}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      </Form.Group>
+                    </div>
+                  </div>
+
+                  <p className="mb-3" style={{ color: '#b8a3d9', fontSize: '12px' }}>
+                    Deployment will be scheduled for: <strong>{new Date(scheduledTime).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</strong> in <strong>{selectedTimeZone}</strong>.
+                  </p>
+
+                  <div className="d-flex gap-2 mt-3">
+                    <Button
+                      onClick={handleSchedule}
+                      disabled={loading}
+                      style={{
+                        backgroundColor: '#10b981',
+                        borderColor: '#10b981',
+                        flex: 1,
+                        fontWeight: '600'
+                      }}
+                    >
+                      {loading ? <Spinner animation="border" size="sm" /> : 'Confirm Schedule'}
+                    </Button>
+                    <Button
+                      variant="outline-light"
+                      onClick={() => setShowTimePicker(false)}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

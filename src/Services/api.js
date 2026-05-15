@@ -96,4 +96,30 @@ export const getDeploymentStatus = async (projectId) => {
   });
 };
 
+// Unified Deployment
+/**
+ * Regenerates the deployment configuration for a project
+ * @param {string} projectId - The ID of the project
+ * @param {Object} config - The configuration object
+ * @param {string} config.projectName - Name of the project
+ * @param {string} config.buildCommand - Build command for the project
+ * @param {string} config.outputDirectory - Output directory for the build
+ * @param {string} config.installCommand - Install command for dependencies
+ * @param {string} config.nodeVersion - Node.js version to use
+ * @param {string} config.domain - Domain for the deployment
+ * @param {Object} config.environmentVariables - Environment variables for the deployment
+ * @param {Array<Object>} config.redirects - Array of redirect rules
+ * @param {Array<Object>} config.headers - Array of header rules
+ * @returns {Promise<Object>} The response from the API
+ */
+export const regenerateConfig = async (projectId, config) => {
+  try {
+    const response = await api.post(`/UnifiedDeployment/regenerate-config/${projectId}`, config);
+    return response.data;
+  } catch (error) {
+    console.error('Error regenerating config:', error);
+    throw error;
+  }
+};
+
 export default api;
