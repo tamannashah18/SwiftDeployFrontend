@@ -884,7 +884,7 @@ const ProjectDetail = () => {
                          </div>
                        </div>
 
-                       <div className="mt-3">
+                       {/* <div className="mt-3">
                          <Button
                            variant="outline-primary"
                            size="sm"
@@ -896,7 +896,7 @@ const ProjectDetail = () => {
                            ) : null}
                            Regenerate Config
                          </Button>
-                       </div>
+                       </div> */}
                      </>
                    ) : project?.config ? (
                      <>
