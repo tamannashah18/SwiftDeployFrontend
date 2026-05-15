@@ -293,7 +293,7 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     const config = deploymentData.config || {};
 
     const formattedConfig = {
-      ProjectName: config.projectName || deploymentData.projectId || 'Deployed Project',
+      ProjectName: config.projectName || deploymentData.projectName || deploymentData.projectId || 'Deployed Project',
       BuildCommand: config.buildCommand || '',
       OutputDirectory: config.outputDirectory || (deploymentData.platform === 'githubpages' ? '/' : '.'),
       InstallCommand: config.installCommand || ''
@@ -330,6 +330,7 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
 
     const payload = {
       userId: user.id,
+      projectId: deploymentData.projectId,
       ProjectName: formattedConfig.ProjectName,
       description: deploymentData.description || 'Deployed via SwiftDeploy',
       platform: deploymentData.platform,

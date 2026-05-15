@@ -242,6 +242,7 @@ setOptimizations(result.analysis.optimizations || []);
   try {
     // ⭐ Create JSON payload matching your backend UploadProjectRequest model
     const payload = {
+      projectId: project._id || project.id,
       projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
       description: project.description || `Deployed ${project.projectName} via SwiftDeploy`,
       platform: selectedPlatform,
@@ -386,7 +387,8 @@ setOptimizations(result.analysis.optimizations || []);
 
     const [owner, repo] = project.repoId.split('/');
     const deploymentData = {
-      projectId: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+      projectId: project._id || project.id,
+      projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
       description: project.description || `Deployed ${project.projectName} via SwiftDeploy`,
       platform: selectedPlatform,
       owner,
