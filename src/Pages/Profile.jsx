@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import NavigationBar from "../Components/NavigationBar";
+import { getUserTokens, savePlatformToken } from "../api/auth";
+import apiClient from "../api/apiClient";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 function Profile() {
   const [user, setUser] = useState(null);
@@ -24,7 +27,41 @@ function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [passwordMode, setPasswordMode] = useState(false);
   const [tokenMode, setTokenMode] = useState(false);
+  const [showTokens, setShowTokens] = useState({
+    github: false,
+    vercel: false,
+    netlify: false,
+    cloudflare: false
+  });
   const [message, setMessage] = useState("");
+  const [loadingTokens, setLoadingTokens] = useState(false);
+
+  const fetchTokens = async () => {
+    setLoadingTokens(true);
+    try {
+      const tokenData = await getUserTokens();
+      console.log("Token data from API:", tokenData);
+      
+      // Prioritize actual token values if returned by API, then localStorage, then placeholder
+      setPlatformTokens({
+        github: tokenData.githubToken || tokenData.github || localStorage.getItem("github_access_token") || (tokenData.hasGitHubToken ? "****************" : ""),
+        vercel: tokenData.vercelToken || tokenData.vercel || localStorage.getItem("vercel_token") || (tokenData.hasVercelToken ? "****************" : ""),
+        netlify: tokenData.netlifyToken || tokenData.netlify || localStorage.getItem("netlify_token") || (tokenData.hasNetlifyToken ? "****************" : ""),
+        cloudflare: tokenData.cloudflareToken || tokenData.cloudflare || localStorage.getItem("cloudflare_token") || (tokenData.hasCloudflareToken ? "****************" : "")
+      });
+    } catch (err) {
+      console.error("Error fetching tokens:", err);
+      // Fallback to localStorage if API fails
+      setPlatformTokens({
+        github: localStorage.getItem("github_access_token") || "",
+        vercel: localStorage.getItem("vercel_token") || "",
+        netlify: localStorage.getItem("netlify_token") || "",
+        cloudflare: localStorage.getItem("cloudflare_token") || ""
+      });
+    } finally {
+      setLoadingTokens(false);
+    }
+  };
 
   useEffect(() => {
     const storedToken = localStorage.getItem("token") || localStorage.getItem("jwtToken");
@@ -39,12 +76,7 @@ function Profile() {
         email: parsedUser.email || ""
       });
 
-      setPlatformTokens({
-        github: localStorage.getItem("github_access_token") || "",
-        vercel: localStorage.getItem("vercel_token") || "",
-        netlify: localStorage.getItem("netlify_token") || "",
-        cloudflare: localStorage.getItem("cloudflare_token") || ""
-      });
+      fetchTokens();
     }
   }, []);
 
@@ -82,6 +114,13 @@ function Profile() {
     }));
   };
 
+  const toggleTokenVisibility = (platform) => {
+    setShowTokens((prev) => ({
+      ...prev,
+      [platform]: !prev[platform]
+    }));
+  };
+
   const handleUpdate = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -91,18 +130,12 @@ function Profile() {
     }
 
     try {
-      const response = await axios.put(
-        `http://localhost:5280/api/user/${user.id}`,
+      const response = await apiClient.put(
+        `/user/${user.id}`,
         {
           Username: formData.username,
           Name: formData.name,
           Email: formData.email
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
         }
       );
 
@@ -143,17 +176,11 @@ function Profile() {
     }
 
     try {
-      await axios.put(
-        `http://localhost:5280/api/user/${user.id}/password`,
+      await apiClient.put(
+        `/user/${user.id}/password`,
         {
           CurrentPassword: passwordData.currentPassword,
           NewPassword: passwordData.newPassword
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
-          }
         }
       );
 
@@ -174,19 +201,26 @@ function Profile() {
     setMessage("");
 
     try {
-      Object.keys(platformTokens).forEach((platform) => {
-        if (platformTokens[platform]) {
-          localStorage.setItem(`${platform}_token`, platformTokens[platform]);
+      const savePromises = Object.keys(platformTokens).map(async (platform) => {
+        const tokenValue = platformTokens[platform];
+        // Only save if it's not the placeholder and not empty
+        if (tokenValue && tokenValue !== "****************") {
+          await savePlatformToken(platform, tokenValue);
+          localStorage.setItem(`${platform}_token`, tokenValue);
           if (platform === "github") {
-            localStorage.setItem("github_access_token", platformTokens[platform]);
+            localStorage.setItem("github_access_token", tokenValue);
           }
         }
       });
 
+      await Promise.all(savePromises);
+
       setMessage("Platform tokens updated successfully");
       setTokenMode(false);
+      fetchTokens(); // Refresh token status
     } catch (err) {
-      setMessage("Failed to update platform tokens");
+      console.error("Error updating tokens:", err);
+      setMessage(err.message || "Failed to update platform tokens");
     }
   };
 
@@ -291,35 +325,94 @@ function Profile() {
         ) : tokenMode ? (
           <form onSubmit={handleTokenUpdate}>
             <h3 style={{ marginBottom: "20px" }}>Platform Tokens</h3>
-            <input
-              type="text"
-              name="github"
-              value={platformTokens.github}
-              onChange={handleTokenChange}
-              placeholder="GitHub Token"
-            />
-            <input
-              type="text"
-              name="vercel"
-              value={platformTokens.vercel}
-              onChange={handleTokenChange}
-              placeholder="Vercel Token"
-            />
-            <input
-              type="text"
-              name="netlify"
-              value={platformTokens.netlify}
-              onChange={handleTokenChange}
-              placeholder="Netlify Token"
-            />
-            <input
-              type="text"
-              name="cloudflare"
-              value={platformTokens.cloudflare}
-              onChange={handleTokenChange}
-              placeholder="Cloudflare Token"
-            />
-            <button type="submit" className="btn">
+            
+            {loadingTokens ? (
+              <div style={{ textAlign: "center", padding: "20px" }}>Loading token status...</div>
+            ) : (
+              <>
+                <div className="token-input-group">
+                  <label>GitHub Token</label>
+                  <div className="input-with-icon">
+                    <input
+                      type={showTokens.github ? "text" : "password"}
+                      name="github"
+                      value={platformTokens.github}
+                      onChange={handleTokenChange}
+                      placeholder="GitHub Token"
+                    />
+                    <button 
+                      type="button" 
+                      className="eye-toggle" 
+                      onClick={() => toggleTokenVisibility('github')}
+                    >
+                      {showTokens.github ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="token-input-group">
+                  <label>Vercel Token</label>
+                  <div className="input-with-icon">
+                    <input
+                      type={showTokens.vercel ? "text" : "password"}
+                      name="vercel"
+                      value={platformTokens.vercel}
+                      onChange={handleTokenChange}
+                      placeholder="Vercel Token"
+                    />
+                    <button 
+                      type="button" 
+                      className="eye-toggle" 
+                      onClick={() => toggleTokenVisibility('vercel')}
+                    >
+                      {showTokens.vercel ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="token-input-group">
+                  <label>Netlify Token</label>
+                  <div className="input-with-icon">
+                    <input
+                      type={showTokens.netlify ? "text" : "password"}
+                      name="netlify"
+                      value={platformTokens.netlify}
+                      onChange={handleTokenChange}
+                      placeholder="Netlify Token"
+                    />
+                    <button 
+                      type="button" 
+                      className="eye-toggle" 
+                      onClick={() => toggleTokenVisibility('netlify')}
+                    >
+                      {showTokens.netlify ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="token-input-group">
+                  <label>Cloudflare Token</label>
+                  <div className="input-with-icon">
+                    <input
+                      type={showTokens.cloudflare ? "text" : "password"}
+                      name="cloudflare"
+                      value={platformTokens.cloudflare}
+                      onChange={handleTokenChange}
+                      placeholder="Cloudflare Token"
+                    />
+                    <button 
+                      type="button" 
+                      className="eye-toggle" 
+                      onClick={() => toggleTokenVisibility('cloudflare')}
+                    >
+                      {showTokens.cloudflare ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button type="submit" className="btn" style={{ marginTop: "20px" }}>
               Save Tokens
             </button>
             <button
