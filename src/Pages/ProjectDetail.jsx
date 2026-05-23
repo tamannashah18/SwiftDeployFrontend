@@ -1062,10 +1062,12 @@ const ProjectDetail = () => {
         show={showDeployModal}
         onHide={() => setShowDeployModal(false)}
         project={project}
+        latestDeployment={latestDeployment}
         onDeploymentStart={(deploymentData) => {
           setDeploymentInfo(deploymentData);
           setActiveTab('deployment');
           fetchProjectDetails();
+          fetchLatestDeployment();
         }}
       />
     </div>

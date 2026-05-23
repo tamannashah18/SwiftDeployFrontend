@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
 import { FaExternalLinkAlt, FaTrash, FaGithub, FaCloudflare } from 'react-icons/fa';
-import { SiNetlify, SiVercel } from 'react-icons/si';
+import { SiNetlify, SiVercel, SiRender, SiRailway } from 'react-icons/si';
 import { getDeploymentById, deleteDeployment } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import '../css/ProjectDetail.css';
@@ -73,6 +73,10 @@ const DeploymentDetail = () => {
       case 'githubpages':
       case 'github':
         return { name: 'GitHub Pages', icon: FaGithub, color: '#333333' };
+      case 'render':
+        return { name: 'Render', icon: SiRender, color: '#46E3B7' };
+      case 'railway':
+        return { name: 'Railway', icon: SiRailway, color: '#0B0D0E' };
       default:
         return { name: platform.charAt(0).toUpperCase() + platform.slice(1), icon: null, color: '#6c757d' };
     }

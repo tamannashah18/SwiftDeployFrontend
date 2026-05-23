@@ -336,7 +336,8 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
       platform: deploymentData.platform,
       gitHubRepo: `${deploymentData.owner}/${repoName}`,
       branch: deploymentData.branch || 'main',
-      config: formattedConfig
+      config: formattedConfig,
+      platformId: deploymentData.platformId
     };
 
     console.log('📤 Sending deployment request:', payload);

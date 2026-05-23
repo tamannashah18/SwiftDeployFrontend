@@ -12,7 +12,8 @@ const DeploymentModal = ({
   onHide, 
   project, 
   onDeploymentStart,
-  isWithoutGitHub = false  // ⭐ NEW PROP to indicate deploy-without-github mode
+  isWithoutGitHub = false,  // ⭐ NEW PROP to indicate deploy-without-github mode
+  latestDeployment = null
 }) => {
   const navigate = useNavigate();
   const [step, setStep] = useState('analyze');
@@ -386,6 +387,10 @@ setOptimizations(result.analysis.optimizations || []);
     }
 
     const [owner, repo] = project.repoId.split('/');
+    const platformId = latestDeployment?.platform?.toLowerCase() === selectedPlatform?.toLowerCase()
+      ? (latestDeployment?.platformProjectId || latestDeployment?.PlatformProjectId || null)
+      : null;
+
     const deploymentData = {
       projectId: project._id || project.id,
       projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
@@ -394,7 +399,8 @@ setOptimizations(result.analysis.optimizations || []);
       owner,
       repo,
       branch: project.branch || 'main',
-      config: deploymentConfig || {}
+      config: deploymentConfig || {},
+      platformId
     };
 
     const response = await deployToUnifiedPlatform(deploymentData);
@@ -487,6 +493,43 @@ const handleSchedule = async () => {
     const finalDate = new Date(baseDate.getTime() - offset * 60000);
     const utcTime = finalDate.toISOString();
 
+    const config = deploymentConfig || {};
+    const formattedConfig = {
+      ProjectName: config.projectName || project.projectName || project.projectId || 'Deployed Project',
+      BuildCommand: config.buildCommand || '',
+      OutputDirectory: config.outputDirectory || (selectedPlatform === 'githubpages' ? '/' : '.'),
+      InstallCommand: config.installCommand || ''
+    };
+
+    if (config.nodeVersion) {
+      formattedConfig.NodeVersion = config.nodeVersion;
+    }
+    if (config.domain) {
+      formattedConfig.Domain = config.domain;
+    }
+    if (config.framework) {
+      formattedConfig.Framework = config.framework;
+    }
+    if (config.enableHttps !== undefined) {
+      formattedConfig.EnableHttps = config.enableHttps;
+    }
+    if (config.environmentVariables && Object.keys(config.environmentVariables).length > 0) {
+      formattedConfig.EnvironmentVariables = config.environmentVariables;
+    }
+    if (config.redirects && config.redirects.length > 0) {
+      formattedConfig.Redirects = config.redirects.map(r => ({
+        From: r.from,
+        To: r.to,
+        Status: r.status
+      }));
+    }
+    if (config.headers && config.headers.length > 0) {
+      formattedConfig.Headers = config.headers.map(h => ({
+        Source: h.source,
+        Headers: h.headers
+      }));
+    }
+
     if (isUploadDeployment) {
       // payload matches UploadProjectRequest
       const payload = {
@@ -497,12 +540,16 @@ const handleSchedule = async () => {
         description: project.description || `Scheduled deployment via SwiftDeploy`,
         platform: selectedPlatform,
         zipPath: project.zipPath || project.ZipPath || '',
-        config: deploymentConfig || {}
+        config: formattedConfig
       };
       
       await scheduleUploadDeployment(payload, utcTime);
     } else {
       // payload matches GitHubDeployRequest
+      const platformId = latestDeployment?.platform?.toLowerCase() === selectedPlatform?.toLowerCase()
+        ? (latestDeployment?.platformProjectId || latestDeployment?.PlatformProjectId || null)
+        : null;
+
       const payload = {
         userId: userData.id,
         projectId: project._id || project.id,
@@ -511,7 +558,8 @@ const handleSchedule = async () => {
         platform: selectedPlatform,
         gitHubRepo: project.repoId,
         branch: project.branch || 'main',
-        config: deploymentConfig || {}
+        config: formattedConfig,
+        platformId
       };
       
       await scheduleGitHubDeployment(payload, utcTime);
