@@ -26,7 +26,7 @@ import Deployments from './Pages/Deployments';
 import DeploymentDetail from './Pages/DeploymentDetail';
 import HelpSupport from './Pages/HelpSupport';
 import DeploymentToastProvider from './Components/DeploymentToast';
- 
+
 function App() {
   const AuthCallbackWrapper = () => {
   const navigate = useNavigate();
