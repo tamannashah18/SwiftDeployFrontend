@@ -311,6 +311,9 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
     if (config.enableHttps !== undefined) {
       formattedConfig.EnableHttps = config.enableHttps;
     }
+    if (config.region && deploymentData.platform === 'aws') {
+      formattedConfig.Region = config.region;
+    }
     if (config.environmentVariables && Object.keys(config.environmentVariables).length > 0) {
       formattedConfig.EnvironmentVariables = config.environmentVariables;
     }

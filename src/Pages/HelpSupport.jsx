@@ -186,7 +186,7 @@ const HelpSupport = () => {
                   </Form>
 
                   <div className="mt-4 pt-4 border-top" style={{ borderColor: '#6c3fb5' }}>
-                    <h6 className="mb-3">Other Ways to Reach Us</h6>
+                    <h6 className="mb-3 text-white">Other Ways to Reach Us</h6>
                     <div className="contact-info">
                       <p className="mb-2">
                         <strong>Email:</strong>{' '}
