@@ -26,6 +26,7 @@ import Deployments from './Pages/Deployments';
 import DeploymentDetail from './Pages/DeploymentDetail';
 import HelpSupport from './Pages/HelpSupport';
 import DeploymentToastProvider from './Components/DeploymentToast';
+import TermsAndConditions from './Pages/TermsAndConditions';
  
 function App() {
   const AuthCallbackWrapper = () => {
@@ -56,6 +57,8 @@ function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />
           <Route path="/help-support" element={<HelpSupport />} />
+          <Route path="/terms" element={<TermsAndConditions mode="accept" />} />
+          <Route path="/policy" element={<TermsAndConditions mode="view" />} />
 
 
         </Routes>

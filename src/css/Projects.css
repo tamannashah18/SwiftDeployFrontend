@@ -296,3 +296,18 @@
   background: #8462fc;
   border-radius: 0.25rem;
 }
+
+/* Form Control Placeholder Color */
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+  opacity: 1; /* Firefox */
+}
+
+/* Unify input heights for search and filter bars */
+input[type="text"].form-control,
+input[type="date"].form-control,
+select.form-control {
+  height: 2.8rem;
+  box-sizing: border-box;
+  padding: 0.5rem 0.75rem;
+}

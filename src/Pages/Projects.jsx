@@ -115,6 +115,13 @@ function Projects() {
     }
   };
 
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredProjects = projects.filter(proj => 
+    proj.projectName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (proj.repoId && proj.repoId.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <div className="projects-page">
       <NavigationBar />
@@ -127,6 +134,17 @@ function Projects() {
           </button>
         </div>
 
+        <div className="mb-4">
+          <input 
+            type="text" 
+            className="form-control" 
+            placeholder="Search projects by name or repo..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ maxWidth: '400px', backgroundColor: '#1a0033', color: '#fff', border: '1px solid #6c3fb5' }}
+          />
+        </div>
+
         <div className="projects-grid">
           {loading ? (
             <div className="text-center py-5">
@@ -136,8 +154,10 @@ function Projects() {
             </div>
           ) : projects.length === 0 ? (
             <p>No projects yet. Click "+ New Project" to add one.</p>
+          ) : filteredProjects.length === 0 ? (
+            <p>No projects match your search.</p>
           ) : (
-            projects.map((proj) => (
+            filteredProjects.map((proj) => (
               <div
                 className="project-card"
                 key={proj.id}

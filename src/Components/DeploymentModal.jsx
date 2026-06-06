@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Card, Form, Alert, Spinner, Badge, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { SiNetlify, SiVercel, SiCloudflare } from 'react-icons/si';
+import { SiNetlify, SiVercel, SiCloudflare, SiAmazons3, SiFirebase, SiRender, SiRailway } from 'react-icons/si';
 import { FaGithub, FaCheckCircle, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import { VscAzure } from 'react-icons/vsc';
 import { analyzeAndSuggest, deployToUnifiedPlatform, scheduleUploadDeployment, scheduleGitHubDeployment } from '../api/deployments';
 import { getUserTokens, savePlatformToken, startNetlifyLogin } from '../api/auth';
 import ConfigurationForm from './ConfigurationForm';
@@ -67,6 +68,11 @@ const [optimizations, setOptimizations] = useState([]);
     'github pages': { name: 'GitHub Pages', icon: FaGithub, color: '#333', requiresOAuth: false },
     cloudflare: { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
     'cloudflare pages': { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
+    aws: { name: 'AWS S3', icon: SiAmazons3, color: '#FF9900', requiresOAuth: false },
+    gcp: { name: 'GCP (Firebase)', icon: SiFirebase, color: '#FFCA28', requiresOAuth: false },
+    azure: { name: 'Azure Static Apps', icon: VscAzure, color: '#0089D6', requiresOAuth: false },
+    render: { name: 'Render', icon: SiRender, color: '#46E3B7', requiresOAuth: false },
+    railway: { name: 'Railway', icon: SiRailway, color: '#0B0D0E', requiresOAuth: false },
   };
 
   const normalizePlatformName = (name) => {
@@ -75,15 +81,18 @@ const [optimizations, setOptimizations] = useState([]);
     if (lower.includes('cloudflare')) return 'cloudflare';
     if (lower.includes('netlify')) return 'netlify';
     if (lower.includes('vercel')) return 'vercel';
+    if (lower.includes('aws') || lower.includes('amazon')) return 'aws';
+    if (lower.includes('gcp') || lower.includes('firebase')) return 'gcp';
+    if (lower.includes('azure')) return 'azure';
+    if (lower.includes('render')) return 'render';
+    if (lower.includes('railway')) return 'railway';
     return lower;
   };
 
   useEffect(() => {
     if (show) {
-      // ⭐ Only fetch tokens if NOT in deploy-without-github mode
-      if (!isWithoutGitHub) {
-        fetchTokens();
-      }
+      // ⭐ Always fetch tokens to show connected status
+      fetchTokens();
       
       // ⭐ Only analyze project if NOT in deploy-without-github mode
       if (!isWithoutGitHub) {
@@ -95,7 +104,12 @@ const [optimizations, setOptimizations] = useState([]);
         setPlatforms([
           { platform: 'Vercel', score: 90, reason: 'Fast deployment with automatic builds', features: ['Auto-scaling', 'Edge Network'], isRecommended: true },
           { platform: 'Cloudflare', score: 85, reason: 'Global CDN with excellent performance', features: ['DDoS Protection', 'Fast CDN'] },
-          { platform: 'Netlify', score: 80, reason: 'Easy deployment with continuous integration', features: ['Form Handling', 'Split Testing'] }
+          { platform: 'Netlify', score: 80, reason: 'Easy deployment with continuous integration', features: ['Form Handling', 'Split Testing'] },
+          { platform: 'AWS S3', score: 80, reason: 'Scalable cloud storage for static websites', features: ['High Availability', 'Custom Domains'] },
+          { platform: 'GCP', score: 75, reason: 'Global hosting by Google', features: ['Global CDN', 'Free SSL'] },
+          { platform: 'Azure', score: 75, reason: 'Streamlined static apps', features: ['Global Availability', 'Custom Domains'] },
+          { platform: 'Render', score: 70, reason: 'Unified cloud for apps and sites', features: ['Auto Deploy', 'Free SSL'] },
+          { platform: 'Railway', score: 65, reason: 'Deploy databases and backend services', features: ['Databases', 'Auto Scaling'] }
         ]);
       }
 
@@ -119,6 +133,11 @@ const [optimizations, setOptimizations] = useState([]);
         vercel: tokenData.hasVercelToken,
         'githubpages': tokenData.hasGitHubToken,
         cloudflare: tokenData.hasCloudflareToken,
+        aws: tokenData.hasAwsToken || false,
+        gcp: tokenData.hasGcpToken || false,
+        azure: tokenData.hasAzureToken || false,
+        render: tokenData.hasRenderToken || false,
+        railway: tokenData.hasRailwayToken || false,
       });
     } catch (err) {
       console.error('Error fetching tokens:', err);
@@ -250,6 +269,7 @@ setOptimizations(result.analysis.optimizations || []);
       repoName: project.repoId,
       config: deploymentConfig?.config || deploymentConfig || {
         projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+        region: deploymentConfig?.region || 'us-east-1',
         framework: deploymentConfig?.framework || 'static',
         buildCommand: deploymentConfig?.buildCommand || '',
         installCommand: deploymentConfig?.installCommand || '',
@@ -929,8 +949,10 @@ const handleSchedule = async () => {
 
         {step === 'config' && (
           <ConfigurationForm
+            selectedPlatform={selectedPlatform}
             onSubmit={handleConfigSubmit}
             initialConfig={{
+              region: 'us-east-1',
               projectName: project.projectName || '',
               framework: isWithoutGitHub ? 'static' : getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework),
               buildCommand: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static' 
