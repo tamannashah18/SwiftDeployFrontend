@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { NavigationBar } from '../Components/NavigationBar';
 import { startGitHubLogin, startNetlifyLogin, getUserTokens, disconnectPlatform } from '../api/auth';
 import { getUserProjects } from '../api/deployments';
-import { FaGithub, FaNetworkWired, FaCloudflare, FaRocket, FaTachometerAlt } from 'react-icons/fa';
+import { FaGithub, FaNetworkWired, FaCloudflare, FaRocket, FaTachometerAlt, FaAws, FaGoogle, FaMicrosoft, FaServer, FaTrain } from 'react-icons/fa';
 import { SiNetlify, SiVercel } from 'react-icons/si';
 import '../css/Responsive.css';
 import '../css/Dashboard.css';
@@ -17,6 +17,11 @@ function Dashboard() {
     netlify: false,
     vercel: false,
     cloudflare: false,
+    aws: false,
+    gcp: false,
+    azure: false,
+    render: false,
+    railway: false,
   });
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(null);
@@ -30,10 +35,15 @@ function Dashboard() {
         const tokens = await getUserTokens();
         console.log('Fetched tokens:', tokens);
         const platformStates = {
-          github: !!tokens.hasGitHubToken,
-          netlify: !!tokens.hasNetlifyToken,
-          vercel: !!tokens.hasVercelToken,
-          cloudflare: !!tokens.hasCloudflareToken,
+          github: !!tokens.githubToken || !!tokens.github || !!tokens.hasGitHubToken || !!localStorage.getItem("github_access_token"),
+          netlify: !!tokens.netlifyToken || !!tokens.netlify || !!tokens.hasNetlifyToken || !!localStorage.getItem("netlify_token"),
+          vercel: !!tokens.vercelToken || !!tokens.vercel || !!tokens.hasVercelToken || !!localStorage.getItem("vercel_token"),
+          cloudflare: !!tokens.cloudflareToken || !!tokens.cloudflare || !!tokens.hasCloudflareToken || !!localStorage.getItem("cloudflare_token"),
+          aws: !!tokens.awsAccessKey || !!tokens.hasAwsAccessKey || !!localStorage.getItem("awsAccessKey_token"),
+          gcp: !!tokens.gcpServiceAccount || !!tokens.hasGcpServiceAccount || !!localStorage.getItem("gcpServiceAccount_token"),
+          azure: !!tokens.azurePublishProfile || !!tokens.hasAzurePublishProfile || !!localStorage.getItem("azurePublishProfile_token"),
+          render: !!tokens.renderToken || !!tokens.hasRenderToken || !!localStorage.getItem("renderToken_token"),
+          railway: !!tokens.railwayToken || !!tokens.hasRailwayToken || !!localStorage.getItem("railwayToken_token"),
         };
         console.log('Platform states:', platformStates);
         setConnectedPlatforms(platformStates);
@@ -73,6 +83,10 @@ function Dashboard() {
     startNetlifyLogin();
   };
 
+  const handleConnectProfile = () => {
+    navigate('/profile');
+  };
+
   const handleDisconnect = async (platformKey) => {
     if (!window.confirm(`Are you sure you want to disconnect ${platformKey}?`)) {
       return;
@@ -96,8 +110,13 @@ function Dashboard() {
   const platformCards = [
     { name: 'GitHub', icon: FaGithub, key: 'github', color: '#333', action: handleConnectGitHub },
     { name: 'Netlify', icon: SiNetlify, key: 'netlify', color: '#00C7B7', action: handleConnectNetlify },
-    { name: 'Vercel', icon: SiVercel, key: 'vercel', color: '#000' },
-    { name: 'Cloudflare', icon: FaCloudflare, key: 'cloudflare', color: '#F38020' },
+    { name: 'Vercel', icon: SiVercel, key: 'vercel', color: '#000', action: handleConnectProfile },
+    { name: 'Cloudflare', icon: FaCloudflare, key: 'cloudflare', color: '#F38020', action: handleConnectProfile },
+    { name: 'AWS', icon: FaAws, key: 'aws', color: '#FF9900', action: handleConnectProfile },
+    { name: 'GCP', icon: FaGoogle, key: 'gcp', color: '#4285F4', action: handleConnectProfile },
+    { name: 'Azure', icon: FaMicrosoft, key: 'azure', color: '#00A4EF', action: handleConnectProfile },
+    { name: 'Render', icon: FaServer, key: 'render', color: '#46E3B7', action: handleConnectProfile },
+    { name: 'Railway', icon: FaTrain, key: 'railway', color: '#0B0D0E', action: handleConnectProfile },
   ];
 
   if (loading) {
@@ -151,7 +170,7 @@ function Dashboard() {
                   <div className="card-body">
                     <FaNetworkWired className="mb-2" size={28} />
                     <h5 className="card-title">View Projects</h5>
-                    <p className="card-text">Manage your {projects.length} projects</p>
+                    <p className="card-text">Manage your projects</p>
                   </div>
                 </div>
               </div>

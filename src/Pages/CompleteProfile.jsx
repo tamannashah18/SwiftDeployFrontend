@@ -101,9 +101,9 @@ function CompleteProfile() {
         
         setSuccess("Profile completed! Redirecting...");
         
-        // Navigate to projects after successful login
+        // Navigate to terms after successful login
         setTimeout(() => {
-          navigate("/projects");
+          navigate("/terms", { state: { redirectTo: "/projects" } });
         }, 500);
       }
     } catch (err) {

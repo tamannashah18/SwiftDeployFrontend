@@ -3,17 +3,34 @@ import { Form, Button, Card, Badge, Alert, Row, Col } from 'react-bootstrap';
 import { FaPlus, FaTrash, FaCog, FaServer, FaGlobe, FaCode, FaLock } from 'react-icons/fa';
 import '../css/ConfigurationForm.css';
 
-const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack }) => {
+const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack, selectedPlatform }) => {
+  const getFrameworkDefaults = (fw) => {
+    switch (fw) {
+      case 'react': return { buildCmd: 'npm run build', outDir: 'build', installCmd: 'npm install', type: 'Framework' };
+      case 'vue': return { buildCmd: 'npm run build', outDir: 'dist', installCmd: 'npm install', type: 'Framework' };
+      case 'angular': return { buildCmd: 'npm run build', outDir: 'dist', installCmd: 'npm install', type: 'Framework' };
+      case 'nextjs': return { buildCmd: 'npm run build', outDir: 'out', installCmd: 'npm install', type: 'Framework' };
+      case 'nuxtjs': return { buildCmd: 'npm run build', outDir: 'dist', installCmd: 'npm install', type: 'Framework' };
+      case 'svelte': return { buildCmd: 'npm run build', outDir: 'dist', installCmd: 'npm install', type: 'Framework' };
+      case 'gatsby': return { buildCmd: 'npm run build', outDir: 'public', installCmd: 'npm install', type: 'Framework' };
+      case 'static': return { buildCmd: '', outDir: '.', installCmd: '', type: 'Static' };
+      default: return { buildCmd: 'npm run build', outDir: 'dist', installCmd: 'npm install', type: 'Framework' };
+    }
+  };
+
+  const initialFramework = initialConfig.framework || 'static';
+  const defaults = getFrameworkDefaults(initialFramework);
+
   const [config, setConfig] = useState({
     projectName: initialConfig.projectName || '',
-    buildCommand: initialConfig.buildCommand !== undefined ? initialConfig.buildCommand : '',
-    // For static sites, these can be empty - only use defaults if not explicitly set
-    outputDirectory: initialConfig.outputDirectory !== undefined ? initialConfig.outputDirectory : 'dist',
-    installCommand: initialConfig.installCommand !== undefined ? initialConfig.installCommand : 'npm install',
-    nodeVersion: initialConfig.nodeVersion !== undefined ? initialConfig.nodeVersion : '18',
+    region: initialConfig.region || 'us-east-1',
+    buildCommand: initialConfig.buildCommand !== undefined ? initialConfig.buildCommand : defaults.buildCmd,
+    outputDirectory: initialConfig.outputDirectory !== undefined ? initialConfig.outputDirectory : defaults.outDir,
+    installCommand: initialConfig.installCommand !== undefined ? initialConfig.installCommand : defaults.installCmd,
+    nodeVersion: initialConfig.nodeVersion !== undefined ? initialConfig.nodeVersion : '20',
     domain: initialConfig.domain || '',
-    framework: initialConfig.framework || 'static',
-    projectType: initialConfig.projectType || 'Static',
+    framework: initialFramework,
+    projectType: initialConfig.projectType || defaults.type,
     enableHttps: initialConfig.enableHttps !== undefined ? initialConfig.enableHttps : true,
     environmentVariables: initialConfig.environmentVariables || {},
     redirects: initialConfig.redirects || [],
@@ -151,17 +168,65 @@ const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack }) => {
                 />
                 <Form.Text>This will be used as the project identifier</Form.Text>
               </Form.Group>
+
+              <Form.Group className="mt-3">
+                <Form.Label>Domain (Optional)</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={config.domain}
+                  onChange={(e) => handleInputChange('domain', e.target.value)}
+                  placeholder="custom-domain.com"
+                />
+                <Form.Text>Optional custom domain for your deployment</Form.Text>
+              </Form.Group>
+
+              {selectedPlatform === 'aws' && (
+                <Form.Group className="mt-3">
+                  <Form.Label>AWS Region</Form.Label>
+                  <Form.Select
+                    value={config.region}
+                    onChange={(e) => handleInputChange('region', e.target.value)}
+                  >
+                    <option value="us-east-1">us-east-1 (N. Virginia)</option>
+                    <option value="us-east-2">us-east-2 (Ohio)</option>
+                    <option value="us-west-1">us-west-1 (N. California)</option>
+                    <option value="us-west-2">us-west-2 (Oregon)</option>
+                    <option value="eu-west-1">eu-west-1 (Ireland)</option>
+                    <option value="eu-central-1">eu-central-1 (Frankfurt)</option>
+                    <option value="ap-south-1">ap-south-1 (Mumbai)</option>
+                    <option value="ap-southeast-1">ap-southeast-1 (Singapore)</option>
+                    <option value="ap-southeast-2">ap-southeast-2 (Sydney)</option>
+                    <option value="ap-northeast-1">ap-northeast-1 (Tokyo)</option>
+                    <option value="sa-east-1">sa-east-1 (São Paulo)</option>
+                    <option value="ca-central-1">ca-central-1 (Central)</option>
+                  </Form.Select>
+                </Form.Group>
+              )}
             </Col>
             <Col md={6} className="form-group-compact">
               <Form.Group>
                 <Form.Label>Framework</Form.Label>
                 <Form.Select
                   value={config.framework}
-                  onChange={(e) => handleInputChange('framework', e.target.value)}
+                  onChange={(e) => {
+                    const fw = e.target.value;
+                    const newDefaults = getFrameworkDefaults(fw);
+                    const oldDefaults = getFrameworkDefaults(config.framework);
+                    
+                    setConfig(prev => ({
+                      ...prev,
+                      framework: fw,
+                      projectType: newDefaults.type,
+                      buildCommand: (!prev.buildCommand || prev.buildCommand === oldDefaults.buildCmd) ? newDefaults.buildCmd : prev.buildCommand,
+                      outputDirectory: (!prev.outputDirectory || prev.outputDirectory === oldDefaults.outDir) ? newDefaults.outDir : prev.outputDirectory,
+                      installCommand: (!prev.installCommand || prev.installCommand === oldDefaults.installCmd) ? newDefaults.installCmd : prev.installCommand
+                    }));
+                  }}
                 >
                   <option value="static">Static HTML/CSS/JS</option>
-                  <option value="react">React</option>
-                  <option value="vue">Vue</option>
+                  <option value="react">React (Create React App)</option>
+                  <option value="vite">Vite (React/Vue/Svelte)</option>
+                  <option value="vue">Vue CLI</option>
                   <option value="angular">Angular</option>
                   <option value="nextjs">Next.js</option>
                   <option value="nuxtjs">Nuxt.js</option>

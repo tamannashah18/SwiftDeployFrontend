@@ -1,7 +1,9 @@
 .config-form-container {
-  max-height: 70vh;
+  max-height: 65vh;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 0.5rem;
+  width: 100%;
 }
 
 .config-card {
@@ -151,4 +153,32 @@
 
 .config-card {
   animation: fadeIn 0.3s ease-out forwards;
+  width: 100%;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid #6c3fb5;
+}
+
+.btn-back {
+  border-color: #6c3fb5;
+  color: #b89dff;
+  font-weight: 500;
+  padding: 0.5rem 1.5rem;
+}
+
+.btn-back:hover {
+  background-color: #3a1f6b;
+  color: white;
+  border-color: #b89dff;
+}
+
+.btn-continue {
+  font-weight: 500;
+  padding: 0.5rem 1.5rem;
 }

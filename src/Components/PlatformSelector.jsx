@@ -1,6 +1,7 @@
 import React from 'react';
-import { SiNetlify, SiVercel, SiRailway, SiRender } from 'react-icons/si';
-import { FaCloudflare, FaGithub } from 'react-icons/fa';
+import { SiNetlify, SiVercel, SiRailway, SiRender, SiFirebase } from 'react-icons/si';
+import { FaCloudflare, FaGithub, FaAws } from 'react-icons/fa';
+import { VscAzure } from 'react-icons/vsc';
 
 function PlatformSelector({ selectedPlatform, onSelect }) {
   const platforms = [
@@ -29,6 +30,30 @@ function PlatformSelector({ selectedPlatform, onSelect }) {
       features: ['Global CDN', 'Workers', 'Analytics'],
     },
     {
+      id: 'aws',
+      name: 'AWS',
+      icon: FaAws,
+      color: '#FF9900',
+      description: 'Amazon Web Services global infrastructure',
+      features: ['High Scalability', 'S3 & CloudFront', 'Enterprise Grade'],
+    },
+    {
+      id: 'gcp',
+      name: 'GCP (Firebase)',
+      icon: SiFirebase,
+      color: '#FFCA28',
+      description: 'Fast and secure global hosting by Google',
+      features: ['Global CDN', 'Custom Domains', 'Free SSL'],
+    },
+    {
+      id: 'azure',
+      name: 'Azure Static Apps',
+      icon: VscAzure,
+      color: '#0089D6',
+      description: 'Streamlined full-stack development',
+      features: ['Global Availability', 'Free SSL', 'Custom Domains'],
+    },
+    {
       id: 'railway',
       name: 'Railway',
       icon: SiRailway,
@@ -45,7 +70,7 @@ function PlatformSelector({ selectedPlatform, onSelect }) {
       features: ['Auto Deploy', 'Free SSL', 'DDoS Protection'],
     },
     {
-      id: 'github',
+      id: 'githubpages',
       name: 'GitHub Pages',
       icon: FaGithub,
       color: '#333',

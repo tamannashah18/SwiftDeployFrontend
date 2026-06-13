@@ -55,7 +55,7 @@ function RegisterUser() {
         { headers: { "Content-Type": "application/json" } }
       ).then((response) => { 
         setFormData({ username: "", email: "", password: "", name: "", confirmPassword: "" });
-        navigate("/login");
+        navigate("/terms", { state: { redirectTo: "/login" } });
      }).catch((error) => { console.log(error); });
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
