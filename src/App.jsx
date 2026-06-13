@@ -43,7 +43,7 @@ function App() {
           <Route path="/header" element={<Header />} />
           <Route path="/auth-callback" element={<AuthCallbackWrapper />} />
           <Route path="/netlify-callback" element={<NetlifyCallback />} />
-          <Route path="/logs" element={<Logs a="" b={0}/>} />
+          <Route path="/logs/:deploymentId" element={<Logs />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/new-project" element={<NewProject />} />

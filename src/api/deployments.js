@@ -292,11 +292,30 @@ export const deployToUnifiedPlatform = async (deploymentData) => {
 
     const config = deploymentData.config || {};
 
+    let projectTypeVal = 0;
+    if (config.projectType !== undefined) {
+      projectTypeVal = (config.projectType === 'Framework' || config.projectType === 1) ? 1 : 0;
+    } else if (config.framework && config.framework !== 'static') {
+      projectTypeVal = 1;
+    }
+
+    let defaultOutputDir = '.';
+    if (deploymentData.platform === 'githubpages') {
+      defaultOutputDir = (!config.framework || config.framework === 'static') ? '/' : 'dist';
+    } else if (config.framework && config.framework !== 'static') {
+      const fw = config.framework.toLowerCase();
+      if (fw.includes('next')) defaultOutputDir = '.next';
+      else if (fw.includes('nuxt')) defaultOutputDir = '.nuxt';
+      else if (fw.includes('react') || fw.includes('vue')) defaultOutputDir = 'dist';
+      else defaultOutputDir = 'dist';
+    }
+
     const formattedConfig = {
       ProjectName: config.projectName || deploymentData.projectName || deploymentData.projectId || 'Deployed Project',
       BuildCommand: config.buildCommand || '',
-      OutputDirectory: config.outputDirectory || (deploymentData.platform === 'githubpages' ? '/' : '.'),
-      InstallCommand: config.installCommand || ''
+      OutputDirectory: config.outputDirectory || defaultOutputDir,
+      InstallCommand: config.installCommand || '',
+      ProjectType: projectTypeVal
     };
 
     if (config.nodeVersion) {
@@ -439,4 +458,14 @@ export const getScheduledDeployments = async (id) => {
     throw error.response?.data || error;
   }
 };
+
+export const getPlatformLogs = async (deploymentId) => {
+  try {
+    const response = await apiClient.get(`/deployments/${deploymentId}/platform-logs`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 
