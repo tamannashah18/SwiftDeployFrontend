@@ -27,6 +27,7 @@ import DeploymentDetail from './Pages/DeploymentDetail';
 import HelpSupport from './Pages/HelpSupport';
 import DeploymentToastProvider from './Components/DeploymentToast';
 import TermsAndConditions from './Pages/TermsAndConditions';
+import DatabaseDeployments from './Pages/DatabaseDeployments';
 
 function App() {
   const AuthCallbackWrapper = () => {
@@ -49,6 +50,7 @@ function App() {
           <Route path="/projects" element={<Projects />} />
           <Route path="/new-project" element={<NewProject />} />
           <Route path="/deployments" element={<Deployments />} />
+          <Route path="/database-deployments" element={<DatabaseDeployments />} />
           <Route path="/deployment/:projectId" element={<DeploymentMonitor />} />
           <Route path="/deployment-detail/:id" element={<DeploymentDetail />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
