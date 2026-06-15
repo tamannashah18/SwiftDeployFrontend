@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Card, Form, Alert, Spinner, Badge, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { SiNetlify, SiVercel, SiCloudflare, SiAmazons3, SiFirebase, SiRender, SiRailway } from 'react-icons/si';
-import { FaGithub, FaCheckCircle, FaCalendarAlt, FaClock } from 'react-icons/fa';
+import { SiNetlify, SiVercel, SiCloudflare, SiFirebase, SiRender, SiRailway } from 'react-icons/si';
+import { FaGithub, FaCheckCircle, FaCalendarAlt, FaClock, FaAws } from 'react-icons/fa';
 import { VscAzure } from 'react-icons/vsc';
 import { analyzeAndSuggest, deployToUnifiedPlatform, scheduleUploadDeployment, scheduleGitHubDeployment } from '../api/deployments';
 import { getUserTokens, savePlatformToken, startNetlifyLogin } from '../api/auth';
@@ -68,7 +68,7 @@ const [optimizations, setOptimizations] = useState([]);
     'github pages': { name: 'GitHub Pages', icon: FaGithub, color: '#333', requiresOAuth: false },
     cloudflare: { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
     'cloudflare pages': { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
-    aws: { name: 'AWS S3', icon: SiAmazons3, color: '#FF9900', requiresOAuth: false },
+    aws: { name: 'AWS S3', icon: FaAws, color: '#FF9900', requiresOAuth: false },
     gcp: { name: 'GCP (Firebase)', icon: SiFirebase, color: '#FFCA28', requiresOAuth: false },
     azure: { name: 'Azure Static Apps', icon: VscAzure, color: '#0089D6', requiresOAuth: false },
     render: { name: 'Render', icon: SiRender, color: '#46E3B7', requiresOAuth: false },
@@ -164,17 +164,20 @@ const [optimizations, setOptimizations] = useState([]);
         setPlatforms(result.analysis.allSuggestions || []);
         setRecommendedPlatform(result.analysis.recommendedPlatform?.platform || null);
         setBuildRisks(result.analysis.buildRisks || []);
-setOptimizations(result.analysis.optimizations || []);
+        setOptimizations(result.analysis.optimizations || []);
 
         const tech = result.analysis.detectedTechnologies || {};
         const projectInfo = result.analysis.projectInfo || {};
 
+        const cleanVal = (val) => (!val || val.toLowerCase() === 'none' ? '' : val);
+        const resolvedFramework = cleanVal(projectInfo.frontendFramework) || cleanVal(projectInfo.backendFramework) || cleanVal(tech.framework) || 'Not detected';
+
         setDetectedTech({
-          framework: projectInfo.frontendFramework || tech.framework || 'Not detected',
+          framework: resolvedFramework,
           frontendFramework: projectInfo.frontendFramework || '',
           backendFramework: projectInfo.backendFramework || '',
-          buildTool: tech.buildTool || 'Not detected',
-          packageManager: tech.packageManager || 'npm',
+          buildTool: cleanVal(tech.buildTool) || 'Not detected',
+          packageManager: cleanVal(tech.packageManager) || 'None',
           technologies: tech.technologies || [],
           projectType: projectInfo.type || 'Unknown',
           isStatic: tech.isStatic || false
@@ -607,6 +610,8 @@ const handleSchedule = async () => {
   const getFrameworkValue = (framework) => {
     if (!framework || framework === 'Not detected') return 'static';
     const lowerFramework = framework.toLowerCase();
+    if (lowerFramework.includes('python') || lowerFramework.includes('flask') || lowerFramework.includes('django') || lowerFramework.includes('fastapi')) return 'python';
+    if (lowerFramework.includes('php')) return 'php';
     if (lowerFramework.includes('react')) return 'react';
     if (lowerFramework.includes('vue')) return 'vue';
     if (lowerFramework.includes('angular')) return 'angular';
@@ -618,16 +623,29 @@ const handleSchedule = async () => {
   };
 
   const getDefaultOutputDir = (framework, buildTool) => {
-    if (selectedPlatform === 'githubpages') return '/';
-    if (!framework || framework === 'Not detected') return '.';
+    if (!framework || framework === 'Not detected') return selectedPlatform === 'githubpages' ? '/' : '.';
 
     const lowerFramework = framework.toLowerCase();
+    if (lowerFramework.includes('python') || lowerFramework.includes('flask') || lowerFramework.includes('django') || lowerFramework.includes('fastapi')) {
+      return 'dist';
+    }
+    if (lowerFramework.includes('php')) {
+      if (selectedPlatform === 'githubpages' || selectedPlatform === 'netlify' || selectedPlatform === 'cloudflare') {
+        return 'dist';
+      }
+      return '.';
+    }
+    if (selectedPlatform === 'githubpages') return '/';
     if (lowerFramework.includes('next')) return '.next';
     if (lowerFramework.includes('nuxt')) return '.nuxt';
     if (buildTool && buildTool.toLowerCase() === 'vite') return 'dist';
     if (lowerFramework.includes('react') || lowerFramework.includes('vue')) return 'build';
     return 'dist';
   };
+
+  const cleanVal = (val) => (!val || val.toLowerCase() === 'none' ? '' : val);
+  const resolvedFwVal = cleanVal(detectedTech.frontendFramework) || cleanVal(detectedTech.backendFramework) || cleanVal(detectedTech.framework);
+  const resolvedFw = getFrameworkValue(resolvedFwVal || (detectedTech.technologies.some(t => t.toLowerCase().includes('python')) ? 'python' : ''));
 
   return (
     <Modal 
@@ -669,7 +687,18 @@ const handleSchedule = async () => {
             </p>
 
             <div className="row g-3">
-              {platforms.map((platform, index) => {
+              {platforms
+                .filter(p => {
+                  const norm = normalizePlatformName(p.platform);
+                  const isPhp = (detectedTech.framework || '').toLowerCase().includes('php') || 
+                                (detectedTech.frontendFramework || '').toLowerCase().includes('php') ||
+                                (deploymentConfig?.framework || '').toLowerCase().includes('php');
+                  if (isPhp) {
+                    return norm !== 'githubpages' && norm !== 'netlify';
+                  }
+                  return true;
+                })
+                .map((platform, index) => {
                 const normalizedName = normalizePlatformName(platform.platform);
                 const config = platformConfig[normalizedName];
                 const Icon = config?.icon || FaGithub;
@@ -695,7 +724,7 @@ const handleSchedule = async () => {
                               <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
                             </div>
                             <Badge bg="dark" style={{ color: '#ffffff' }}>
-                              Score: {platform.score}/100
+                              Score: {platform.score <= 10 ? platform.score * 10 : platform.score}/100
                             </Badge>
                           </div>
                           {isRecommended && (
@@ -846,7 +875,18 @@ const handleSchedule = async () => {
     </h5>
 
     <div className="row g-3">
-      {platforms.map((platform, index) => {
+      {platforms
+        .filter(p => {
+          const norm = normalizePlatformName(p.platform);
+          const isPhp = (detectedTech.framework || '').toLowerCase().includes('php') || 
+                        (detectedTech.frontendFramework || '').toLowerCase().includes('php') ||
+                        (deploymentConfig?.framework || '').toLowerCase().includes('php');
+          if (isPhp) {
+            return norm !== 'githubpages' && norm !== 'netlify';
+          }
+          return true;
+        })
+        .map((platform, index) => {
         const normalizedName = normalizePlatformName(platform.platform);
         const config = platformConfig[normalizedName];
         const Icon = config?.icon || FaGithub;
@@ -873,7 +913,7 @@ const handleSchedule = async () => {
                       <span className="fw-bold" style={{ color: '#ffffff' }}>{platform.platform}</span>
                     </div>
                     <Badge bg="dark" style={{ color: '#ffffff' }}>
-                      Score: {platform.score}/100
+                      Score: {platform.score <= 10 ? platform.score * 10 : platform.score}/100
                     </Badge>
                   </div>
                   {isRecommended && (
@@ -954,19 +994,42 @@ const handleSchedule = async () => {
             initialConfig={{
               region: 'us-east-1',
               projectName: project.projectName || '',
-              framework: isWithoutGitHub ? 'static' : getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework),
-              buildCommand: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static' 
-                ? '' 
-                : (detectedTech.buildTool ? `${detectedTech.packageManager} run build` : '')),
-              installCommand: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
-                ? ''
-                : (detectedTech.packageManager ? `${detectedTech.packageManager} install` : '')),
-              outputDirectory: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
-                ? ''
-                : getDefaultOutputDir(detectedTech.frontendFramework || detectedTech.framework, detectedTech.buildTool)),
-              nodeVersion: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static'
-                ? ''
-                : '18')
+              framework: isWithoutGitHub ? 'static' : resolvedFw,
+              buildCommand: isWithoutGitHub ? '' : (
+                resolvedFw === 'python'
+                  ? (selectedPlatform === 'railway' ? '' : 'python freeze.py')
+                  : (detectedTech.isStatic || 
+                     resolvedFw === 'static' || 
+                     resolvedFw === 'php'
+                       ? '' 
+                       : (detectedTech.buildTool && detectedTech.packageManager && cleanVal(detectedTech.packageManager) !== '' ? `${detectedTech.packageManager} run build` : ''))
+              ),
+              installCommand: isWithoutGitHub ? '' : (
+                resolvedFw === 'python'
+                  ? 'pip install -r requirements.txt'
+                  : (detectedTech.isStatic || 
+                     resolvedFw === 'static' || 
+                     resolvedFw === 'php'
+                       ? ''
+                       : (detectedTech.packageManager && cleanVal(detectedTech.packageManager) !== '' ? `${detectedTech.packageManager} install` : ''))
+              ),
+              outputDirectory: isWithoutGitHub ? '' : (
+                resolvedFw === 'python'
+                  ? (selectedPlatform === 'railway' ? '.' : 'dist')
+                  : (detectedTech.isStatic || 
+                     resolvedFw === 'static'
+                       ? ''
+                       : getDefaultOutputDir(detectedTech.frontendFramework || detectedTech.framework, detectedTech.buildTool))
+              ),
+              nodeVersion: isWithoutGitHub ? '' : (
+                resolvedFw === 'python'
+                  ? ''
+                  : (detectedTech.isStatic || 
+                     resolvedFw === 'static' || 
+                     resolvedFw === 'php'
+                       ? ''
+                       : '18')
+              )
             }}
             onBack={() => setStep(isWithoutGitHub ? 'select-platform-only' : 'select')}
           />
