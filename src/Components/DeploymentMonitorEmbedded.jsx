@@ -39,9 +39,32 @@ useEffect(() => {
           (typeof rawStatus === 'number' && rawStatus >= 6) ||
           isSuccess;
 
+        let normalizedStatusValue = rawStatus;
+        if (typeof rawStatus === 'number') {
+          const statusNames = [
+            'Uploading',
+            'Processing',
+            'CreatingRepo',
+            'PushingCode',
+            'GeneratingConfig',
+            'Deploying',
+            'Completed',
+            'Failed'
+          ];
+          if (rawStatus >= 0 && rawStatus < statusNames.length) {
+            normalizedStatusValue = statusNames[rawStatus];
+          } else if (rawStatus < 0) {
+            normalizedStatusValue = 'Failed';
+          } else {
+            normalizedStatusValue = 'Completed';
+          }
+        } else if (isCompleted) {
+          normalizedStatusValue = 'Completed';
+        }
+
         const normalizedStatus = {
           ...status,
-          status: isCompleted ? 'Completed' : (rawStatus || 'Processing'),
+          status: normalizedStatusValue || 'Processing',
           message: status.Message || status.message || (isCompleted ? 'Deployment completed' : 'Processing deployment...'),
           githubRepoUrl: status.GitHubRepoUrl || status.githubRepoUrl,
           deploymentUrl: status.DeploymentUrl || status.deploymentUrl,

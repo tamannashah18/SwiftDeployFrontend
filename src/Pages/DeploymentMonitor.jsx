@@ -85,14 +85,24 @@ function DeploymentMonitor() {
             const rawStatus = status.Status || status.status;
             let normalizedStatusValue = rawStatus;
             
-            // Handle numeric status (6 = completed, 0-5 = in progress)
+            // Handle numeric status (0-7)
             if (typeof rawStatus === 'number') {
-              if (rawStatus >= 6) {
-                normalizedStatusValue = 'Completed';
+              const statusNames = [
+                'Uploading',
+                'Processing',
+                'CreatingRepo',
+                'PushingCode',
+                'GeneratingConfig',
+                'Deploying',
+                'Completed',
+                'Failed'
+              ];
+              if (rawStatus >= 0 && rawStatus < statusNames.length) {
+                normalizedStatusValue = statusNames[rawStatus];
               } else if (rawStatus < 0) {
                 normalizedStatusValue = 'Failed';
               } else {
-                normalizedStatusValue = 'Processing';
+                normalizedStatusValue = 'Completed';
               }
             }
             
@@ -438,6 +448,15 @@ function DeploymentMonitor() {
                       <button className="btn btn-outline-secondary" onClick={() => navigate('/projects')}>
                         Back to Projects
                       </button>
+                      {(deployment.mongoDeploymentId || projectId) && (
+                        <button 
+                          className="btn btn-info text-white" 
+                          onClick={() => navigate(`/logs/${deployment.mongoDeploymentId || projectId}`)}
+                          style={{ marginRight: 'auto', marginLeft: '1rem' }}
+                        >
+                          View Logs
+                        </button>
+                      )}
                       {(deployment.status === 'Completed' || deployment.success) && deployment.deploymentUrl && (
                         <button
                           className="btn btn-primary"

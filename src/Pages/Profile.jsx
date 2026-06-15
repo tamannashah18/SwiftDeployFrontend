@@ -30,7 +30,8 @@ function Profile() {
     gcpServiceAccount: "",
     azurePublishProfile: "",
     renderToken: "",
-    railwayToken: ""
+    railwayToken: "",
+    neonToken: ""
   });
   const [editMode, setEditMode] = useState(false);
   const [passwordMode, setPasswordMode] = useState(false);
@@ -45,7 +46,8 @@ function Profile() {
     gcpServiceAccount: false,
     azurePublishProfile: false,
     renderToken: false,
-    railwayToken: false
+    railwayToken: false,
+    neonToken: false
   });
   const [showSteps, setShowSteps] = useState({
     aws: false,
@@ -72,7 +74,8 @@ function Profile() {
         gcpServiceAccount: tokenData.gcpServiceAccount || localStorage.getItem("gcpServiceAccount_token") || (tokenData.hasGcpServiceAccount ? "****************" : ""),
         azurePublishProfile: tokenData.azurePublishProfile || localStorage.getItem("azurePublishProfile_token") || (tokenData.hasAzurePublishProfile ? "****************" : ""),
         renderToken: tokenData.renderToken || localStorage.getItem("renderToken_token") || (tokenData.hasRenderToken ? "****************" : ""),
-        railwayToken: tokenData.railwayToken || localStorage.getItem("railwayToken_token") || (tokenData.hasRailwayToken ? "****************" : "")
+        railwayToken: tokenData.railwayToken || localStorage.getItem("railwayToken_token") || (tokenData.hasRailwayToken ? "****************" : ""),
+        neonToken: tokenData.neonToken || localStorage.getItem("neonToken_token") || (tokenData.hasNeonToken ? "****************" : "")
       });
     } catch (err) {
       console.error("Error fetching tokens:", err);
@@ -87,7 +90,8 @@ function Profile() {
         gcpServiceAccount: localStorage.getItem("gcpServiceAccount_token") || "",
         azurePublishProfile: localStorage.getItem("azurePublishProfile_token") || "",
         renderToken: localStorage.getItem("renderToken_token") || "",
-        railwayToken: localStorage.getItem("railwayToken_token") || ""
+        railwayToken: localStorage.getItem("railwayToken_token") || "",
+        neonToken: localStorage.getItem("neonToken_token") || ""
       });
     } finally {
       setLoadingTokens(false);
@@ -621,6 +625,26 @@ function Profile() {
                       onClick={() => toggleTokenVisibility('railwayToken')}
                     >
                       {showTokens.railwayToken ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="token-input-group">
+                  <label>Neon API Key (PostgreSQL)</label>
+                  <div className="input-with-icon">
+                    <input
+                      type={showTokens.neonToken ? "text" : "password"}
+                      name="neonToken"
+                      value={platformTokens.neonToken}
+                      onChange={handleTokenChange}
+                      placeholder="Neon API Key"
+                    />
+                    <button 
+                      type="button" 
+                      className="eye-toggle" 
+                      onClick={() => toggleTokenVisibility('neonToken')}
+                    >
+                      {showTokens.neonToken ? <FaEyeSlash /> : <FaEye />}
                     </button>
                   </div>
                 </div>

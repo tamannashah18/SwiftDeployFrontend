@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NavigationBar } from '../Components/NavigationBar';
 import { startGitHubLogin, startNetlifyLogin, getUserTokens, disconnectPlatform } from '../api/auth';
+import { getConnectedProviders } from '../api/databaseDeployments';
 import { getUserProjects } from '../api/deployments';
-import { FaGithub, FaNetworkWired, FaCloudflare, FaRocket, FaTachometerAlt, FaAws, FaGoogle, FaMicrosoft, FaServer, FaTrain } from 'react-icons/fa';
+import { FaGithub, FaNetworkWired, FaCloudflare, FaRocket, FaTachometerAlt, FaAws, FaGoogle, FaMicrosoft, FaServer, FaTrain, FaDatabase } from 'react-icons/fa';
 import { SiNetlify, SiVercel } from 'react-icons/si';
 import '../css/Responsive.css';
 import '../css/Dashboard.css';
@@ -22,6 +23,7 @@ function Dashboard() {
     azure: false,
     render: false,
     railway: false,
+    neon: false,
   });
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(null);
@@ -44,7 +46,18 @@ function Dashboard() {
           azure: !!tokens.azurePublishProfile || !!tokens.hasAzurePublishProfile || !!localStorage.getItem("azurePublishProfile_token"),
           render: !!tokens.renderToken || !!tokens.hasRenderToken || !!localStorage.getItem("renderToken_token"),
           railway: !!tokens.railwayToken || !!tokens.hasRailwayToken || !!localStorage.getItem("railwayToken_token"),
+          neon: false,
         };
+
+        // Neon & Railway database tokens are stored via the /api/integrations endpoint separately
+        try {
+          const dbProviders = await getConnectedProviders();
+          platformStates.neon = !!dbProviders.neonConnected;
+          platformStates.railway = platformStates.railway || !!dbProviders.railwayConnected;
+        } catch (e) {
+          console.warn('Could not fetch database provider statuses:', e);
+        }
+
         console.log('Platform states:', platformStates);
         setConnectedPlatforms(platformStates);
 
@@ -71,7 +84,7 @@ function Dashboard() {
     const hasGithubId = !!user.githubId;
     // Check if userType is GitHub
     const isGitHubUser = user.userType === 'GitHub' || user.UserType === 'GitHub';
-    
+
     return hasGitHubToken || hasGithubId || isGitHubUser;
   };
 
@@ -91,7 +104,7 @@ function Dashboard() {
     if (!window.confirm(`Are you sure you want to disconnect ${platformKey}?`)) {
       return;
     }
-    
+
     setDisconnecting(platformKey);
     try {
       await disconnectPlatform(platformKey);
@@ -110,13 +123,14 @@ function Dashboard() {
   const platformCards = [
     { name: 'GitHub', icon: FaGithub, key: 'github', color: '#333', action: handleConnectGitHub },
     { name: 'Netlify', icon: SiNetlify, key: 'netlify', color: '#00C7B7', action: handleConnectNetlify },
-    { name: 'Vercel', icon: SiVercel, key: 'vercel', color: '#000', action: handleConnectProfile },
+    { name: 'Vercel', icon: SiVercel, key: 'vercel', color: '#ffffff', action: handleConnectProfile },
     { name: 'Cloudflare', icon: FaCloudflare, key: 'cloudflare', color: '#F38020', action: handleConnectProfile },
     { name: 'AWS', icon: FaAws, key: 'aws', color: '#FF9900', action: handleConnectProfile },
     { name: 'GCP', icon: FaGoogle, key: 'gcp', color: '#4285F4', action: handleConnectProfile },
     { name: 'Azure', icon: FaMicrosoft, key: 'azure', color: '#00A4EF', action: handleConnectProfile },
     { name: 'Render', icon: FaServer, key: 'render', color: '#46E3B7', action: handleConnectProfile },
-    { name: 'Railway', icon: FaTrain, key: 'railway', color: '#0B0D0E', action: handleConnectProfile },
+    { name: 'Railway (MySQL)', icon: FaTrain, key: 'railway', color: '#ffffff', action: handleConnectProfile },
+    { name: 'Neon (PostgreSQL)', icon: FaDatabase, key: 'neon', color: '#00e599', action: handleConnectProfile },
   ];
 
   if (loading) {
@@ -220,7 +234,7 @@ function Dashboard() {
                           </button>
                         )}
                         {connectedPlatforms[platform.key] && (
-                          <button 
+                          <button
                             className="btn btn-sm btn-outline-danger mt-3 w-100"
                             onClick={() => handleDisconnect(platform.key)}
                             disabled={disconnecting === platform.key}

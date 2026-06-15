@@ -6,6 +6,7 @@ import { FaTerminal } from "react-icons/fa6";
 import { PiGitForkLight } from "react-icons/pi";
 import { GoQuestion } from "react-icons/go";
 import { FiLogOut } from "react-icons/fi";
+import { FaDatabase } from "react-icons/fa";
 import { useAuth } from "../Contexts/AuthContext";
 
 import "../css/NavBar.css";
@@ -50,6 +51,7 @@ export const NavigationBar = () => {
             >
               <PiGitForkLight />
             </div>
+
             <div
               className={`iconify-icon terminal-icon ${isActive('/deployments') ? 'active' : ''}`}
               onClick={() => navigate('/deployments')}
@@ -57,6 +59,15 @@ export const NavigationBar = () => {
             >
               <FaTerminal />
             </div>
+
+            <div
+              className={`iconify-icon ${isActive('/database-deployments') ? 'active' : ''}`}
+              onClick={() => navigate('/database-deployments')}
+              title="Databases"
+            >
+              <FaDatabase />
+            </div>
+
             <div
               className={`iconify-icon ${isActive('/profile') ? 'active' : ''}`}
               onClick={() => navigate('/profile')}

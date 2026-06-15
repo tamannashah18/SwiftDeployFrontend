@@ -276,6 +276,32 @@ const DeploymentDetail = () => {
             </Card.Body>
           </Card>
 
+          {/* Deployment Logs Card */}
+          <Card className="mb-4" style={{ 
+            backgroundColor: '#1b1e2e', 
+            border: '1px solid #3f4257',
+            borderRadius: '12px'
+          }}>
+            <Card.Body className="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 className="mb-1" style={{ color: '#ffffff', fontWeight: '600' }}>Deployment Logs</h5>
+                <p className="mb-0 text-muted" style={{ fontSize: '0.85rem' }}>View step-by-step logs of this deployment execution.</p>
+              </div>
+              <Button 
+                variant="primary" 
+                onClick={() => navigate(`/logs/${getDeploymentId(deployment)}`)}
+                style={{ 
+                  backgroundColor: '#8462fc',
+                  borderColor: '#8462fc',
+                  color: '#ffffff',
+                  fontWeight: '500'
+                }}
+              >
+                View Logs
+              </Button>
+            </Card.Body>
+          </Card>
+
           {deployment.serviceUrl && (
             <Card className="mb-4" style={{ 
               backgroundColor: '#1a4d3a', 
