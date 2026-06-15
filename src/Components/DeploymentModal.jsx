@@ -260,10 +260,56 @@ setOptimizations(result.analysis.optimizations || []);
   setError('');
 
   try {
+    const rawConfig = deploymentConfig || {};
+    let projectTypeVal = 0;
+    if (rawConfig.projectType !== undefined) {
+      projectTypeVal = (rawConfig.projectType === 'Framework' || rawConfig.projectType === 1) ? 1 : 0;
+    } else if (rawConfig.framework && rawConfig.framework !== 'static') {
+      projectTypeVal = 1;
+    }
+
+    let defaultOutputDir = '.';
+    if (selectedPlatform === 'githubpages') {
+      defaultOutputDir = (!rawConfig.framework || rawConfig.framework === 'static') ? '/' : 'dist';
+    } else if (rawConfig.framework && rawConfig.framework !== 'static') {
+      const fw = rawConfig.framework.toLowerCase();
+      if (fw.includes('next')) defaultOutputDir = '.next';
+      else if (fw.includes('nuxt')) defaultOutputDir = '.nuxt';
+      else if (fw.includes('react') || fw.includes('vue')) defaultOutputDir = 'dist';
+      else defaultOutputDir = 'dist';
+    }
+
+    const formattedConfig = {
+      ProjectName: rawConfig.projectName || project.projectName || 'deployed-project',
+      BuildCommand: rawConfig.buildCommand || '',
+      OutputDirectory: rawConfig.outputDirectory || defaultOutputDir,
+      InstallCommand: rawConfig.installCommand || '',
+      Framework: rawConfig.framework || 'static',
+      ProjectType: projectTypeVal,
+      EnableHttps: rawConfig.enableHttps !== undefined ? rawConfig.enableHttps : true,
+      EnvironmentVariables: rawConfig.environmentVariables || {},
+      Redirects: (rawConfig.redirects || []).map(r => ({
+        From: r.from,
+        To: r.to,
+        Status: r.status
+      })),
+      Headers: (rawConfig.headers || []).map(h => ({
+        Source: h.source,
+        Headers: h.headers
+      }))
+    };
+
+    if (rawConfig.nodeVersion) {
+      formattedConfig.NodeVersion = rawConfig.nodeVersion;
+    }
+    if (rawConfig.domain) {
+      formattedConfig.Domain = rawConfig.domain;
+    }
+
     // ⭐ Create JSON payload matching your backend UploadProjectRequest model
     const payload = {
       projectId: project._id || project.id,
-      projectName: deploymentConfig?.projectName || project.projectName || 'deployed-project',
+      projectName: rawConfig.projectName || project.projectName || 'deployed-project',
       description: project.description || `Deployed ${project.projectName} via SwiftDeploy`,
       platform: selectedPlatform,
       repoName: project.repoId,
@@ -514,11 +560,30 @@ const handleSchedule = async () => {
     const utcTime = finalDate.toISOString();
 
     const config = deploymentConfig || {};
+    let projectTypeVal = 0;
+    if (config.projectType !== undefined) {
+      projectTypeVal = (config.projectType === 'Framework' || config.projectType === 1) ? 1 : 0;
+    } else if (config.framework && config.framework !== 'static') {
+      projectTypeVal = 1;
+    }
+
+    let defaultOutputDir = '.';
+    if (selectedPlatform === 'githubpages') {
+      defaultOutputDir = (!config.framework || config.framework === 'static') ? '/' : 'dist';
+    } else if (config.framework && config.framework !== 'static') {
+      const fw = config.framework.toLowerCase();
+      if (fw.includes('next')) defaultOutputDir = '.next';
+      else if (fw.includes('nuxt')) defaultOutputDir = '.nuxt';
+      else if (fw.includes('react') || fw.includes('vue')) defaultOutputDir = 'dist';
+      else defaultOutputDir = 'dist';
+    }
+
     const formattedConfig = {
       ProjectName: config.projectName || project.projectName || project.projectId || 'Deployed Project',
       BuildCommand: config.buildCommand || '',
-      OutputDirectory: config.outputDirectory || (selectedPlatform === 'githubpages' ? '/' : '.'),
-      InstallCommand: config.installCommand || ''
+      OutputDirectory: config.outputDirectory || defaultOutputDir,
+      InstallCommand: config.installCommand || '',
+      ProjectType: projectTypeVal
     };
 
     if (config.nodeVersion) {
@@ -618,7 +683,7 @@ const handleSchedule = async () => {
   };
 
   const getDefaultOutputDir = (framework, buildTool) => {
-    if (selectedPlatform === 'githubpages') return '/';
+    if (selectedPlatform === 'githubpages' && (!framework || framework === 'Not detected' || framework.toLowerCase() === 'static')) return '/';
     if (!framework || framework === 'Not detected') return '.';
 
     const lowerFramework = framework.toLowerCase();
@@ -955,6 +1020,7 @@ const handleSchedule = async () => {
               region: 'us-east-1',
               projectName: project.projectName || '',
               framework: isWithoutGitHub ? 'static' : getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework),
+              projectType: isWithoutGitHub ? 'Static' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static' ? 'Static' : 'Framework'),
               buildCommand: isWithoutGitHub ? '' : (detectedTech.isStatic || getFrameworkValue(detectedTech.frontendFramework || detectedTech.framework) === 'static' 
                 ? '' 
                 : (detectedTech.buildTool ? `${detectedTech.packageManager} run build` : '')),
