@@ -38,10 +38,10 @@ function Deployments() {
 
   const getStatusBadge = (status) => {
     const statusLower = status?.toLowerCase() || '';
-    if (statusLower === 'completed') return 'bg-success';
-    if (statusLower === 'failed') return 'bg-danger';
+    if (statusLower === 'completed' || statusLower === 'success') return 'bg-success';
+    if (statusLower === 'failed' || statusLower === 'error') return 'bg-danger';
     if (statusLower === 'queued') return 'bg-info';
-    if (statusLower === 'processing') return 'bg-warning';
+    if (statusLower === 'deploying' || statusLower === 'processing') return 'bg-warning';
     return 'bg-secondary';
   };
 
