@@ -1,0 +1,88 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   ConfigViewer.css  — Styles for the line-numbered syntax viewer
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Root container — fills its flex parent */
+.cv-root {
+  display: block;
+  width: 100%;
+  overflow: auto;            /* both axes */
+  overflow-x: auto;
+  overflow-y: auto;
+  background: #0d1117;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Courier New', Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  tab-size: 2;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(108, 63, 181, 0.45) transparent;
+}
+
+.cv-root::-webkit-scrollbar        { width: 7px; height: 7px; }
+.cv-root::-webkit-scrollbar-track  { background: transparent; }
+.cv-root::-webkit-scrollbar-thumb  { background: rgba(108, 63, 181, 0.45); border-radius: 3px; }
+.cv-root::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.7); }
+.cv-root::-webkit-scrollbar-corner { background: transparent; }
+
+/* Table fills content width (not the viewport width) to enable horizontal scroll */
+.cv-table {
+  border-collapse: collapse;
+  min-width: 100%;
+  width: max-content;       /* lets the table grow beyond container — enables h-scroll */
+}
+
+/* Each source-code row */
+.cv-row {
+  vertical-align: top;
+}
+
+.cv-row:hover .cv-line-number,
+.cv-row:hover .cv-line-content {
+  background: rgba(139, 92, 246, 0.07);
+}
+
+/* Gutter — line numbers */
+.cv-line-number {
+  user-select: none;
+  text-align: right;
+  padding: 0 0.75rem 0 0.75rem;
+  color: #484f58;
+  border-right: 1px solid rgba(108, 63, 181, 0.18);
+  background: #0d1117;
+  font-variant-numeric: tabular-nums;
+  position: sticky;         /* gutter stays visible on horizontal scroll */
+  left: 0;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+/* Code area */
+.cv-line-content {
+  padding: 0 1.5rem 0 1rem;
+  white-space: pre;         /* preserve indentation without wrapping */
+  color: #c9d1d9;
+}
+
+/* ─── Token colours (GitHub-dark inspired) ─────────────────────────────────── */
+.cv-tok { display: inline; }
+
+/* JSON/YAML keys and TOML keys */
+.cv-tok-key     { color: #79c0ff; }   /* blue */
+
+/* String values */
+.cv-tok-string  { color: #a5d6ff; }   /* light blue */
+
+/* Numeric values */
+.cv-tok-number  { color: #f2cc60; }   /* amber */
+
+/* true / false / null / FROM / RUN etc. */
+.cv-tok-keyword { color: #ff7b72; }   /* red-orange */
+
+/* : = [ ] { } , */
+.cv-tok-operator { color: #8b949e; }  /* muted grey */
+
+/* # comments */
+.cv-tok-comment { color: #8b949e; font-style: italic; }
+
+/* Plain uncolored text */
+.cv-tok-plain   { color: #c9d1d9; }

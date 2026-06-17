@@ -4,10 +4,12 @@ import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
 import { FaRocket, FaGithub, FaExternalLinkAlt, FaTrash, FaCloudflare } from 'react-icons/fa';
 import { SiNetlify, SiVercel } from 'react-icons/si';
-import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment, getFileContent, getScheduledDeployments } from '../api/deployments';
+import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRepoId, getLatestDeployment, getFileContent, getScheduledDeployments, getProjectConfigurations, getProjectConfigurationFile, regenerateProjectConfiguration, previewProjectConfiguration } from '../api/deployments';
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
 import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
+import ConfigViewer from '../Components/ConfigViewer';
+import ConfigRegenModal from '../Components/ConfigRegenModal';
 import { FaClock, FaCalendarAlt } from 'react-icons/fa';
 import '../css/ProjectDetail.css';
 
@@ -28,6 +30,22 @@ const ProjectDetail = () => {
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [scheduledDeployments, setScheduledDeployments] = useState([]);
   const [loadingScheduled, setLoadingScheduled] = useState(false);
+
+  // States for Configuration Management UI
+  const [configsList, setConfigsList] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [loadingConfigs, setLoadingConfigs] = useState(false);
+  const [regeneratingFile, setRegeneratingFile] = useState('');
+  const [configSuccess, setConfigSuccess] = useState('');   // inline success banner
+  const [configError, setConfigError] = useState('');       // inline error banner (config-tab scoped)
+
+  // States for Configuration Diff Modal
+  const [showRegenModal, setShowRegenModal] = useState(false);
+  const [regenTarget, setRegenTarget] = useState('');
+  const [regenPreview, setRegenPreview] = useState(null);
+  const [loadingRegenPreview, setLoadingRegenPreview] = useState(false);
+  const [regenPreviewError, setRegenPreviewError] = useState(null);
+
 
   // ⭐ 1. Fetch project details on mount
   useEffect(() => {
@@ -99,17 +117,20 @@ const ProjectDetail = () => {
     }
   }, [project]);
 
-  // ⭐ 6. Refresh project details when switching to configuration tab
+  // ⭐ 6. Refresh project details and load configurations when switching to configuration tab
   useEffect(() => {
     const refreshProjectForConfig = async () => {
-      if (activeTab === 'configuration' && !project?.config && !loading) {
-        console.log('Config missing, refreshing project details...');
-        await fetchProjectDetails();
+      if (activeTab === 'configuration') {
+        if (!project?.config && !loading) {
+          console.log('Config missing, refreshing project details...');
+          await fetchProjectDetails();
+        }
+        loadConfigurations(true);
       }
     };
 
     refreshProjectForConfig();
-  }, [activeTab]);
+  }, [activeTab, id]);
 
   const parseGitHubUrl = (url) => {
     try {
@@ -378,6 +399,90 @@ const ProjectDetail = () => {
       console.error('Error response:', err.response);
     } finally {
       setLoadingConfig(false);
+    }
+  };
+
+  const loadConfigurations = async (selectFirst = false) => {
+    try {
+      setLoadingConfigs(true);
+      setError('');
+      const projectIdToUse = project?._id || project?.id || project?.projectId || id;
+      const data = await getProjectConfigurations(projectIdToUse);
+      if (Array.isArray(data)) {
+        setConfigsList(data);
+        if (data.length > 0) {
+          if (selectFirst || !selectedFile) {
+            setSelectedFile(data[0]);
+          } else {
+            const currentSelectedName = selectedFile.fileName || selectedFile.FileName;
+            const updatedSelected = data.find(f => (f.fileName || f.FileName) === currentSelectedName);
+            if (updatedSelected) {
+              setSelectedFile(updatedSelected);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load configurations:', err);
+      setError(err?.message || 'Failed to load project configuration files.');
+    } finally {
+      setLoadingConfigs(false);
+    }
+  };
+
+  const handleRegenerateFile = async (fileName) => {
+    setRegenTarget(fileName);
+    setRegenPreview(null);
+    setRegenPreviewError(null);
+    setLoadingRegenPreview(true);
+    setShowRegenModal(true);
+
+    try {
+      const projectIdToUse = project?._id || project?.id || project?.projectId || id;
+      const result = await previewProjectConfiguration(projectIdToUse, fileName);
+      if (result && result.content) {
+        setRegenPreview(result.content);
+      } else {
+        setRegenPreviewError('Empty content received from preview generator.');
+      }
+    } catch (err) {
+      console.error(`Failed to fetch preview for configuration ${fileName}:`, err);
+      const backendMsg = err?.response?.data?.message || err?.response?.data || err?.message;
+      setRegenPreviewError(typeof backendMsg === 'string' ? backendMsg : 'Failed to generate preview content.');
+    } finally {
+      setLoadingRegenPreview(false);
+    }
+  };
+
+  const confirmRegenerateFile = async () => {
+    const fileName = regenTarget;
+    if (!fileName) return;
+
+    try {
+      setRegeneratingFile(fileName);
+      setConfigError('');
+      setConfigSuccess('');
+      setShowRegenModal(false);
+
+      const projectIdToUse = project?._id || project?.id || project?.projectId || id;
+      const result = await regenerateProjectConfiguration(projectIdToUse, fileName);
+      const commitSha = result?.commitSha || result?.data?.commitSha;
+      const shortSha = commitSha ? commitSha.substring(0, 7) : null;
+      setConfigSuccess(
+        shortSha
+          ? `✅ ${fileName} regenerated and committed successfully! (commit: ${shortSha})`
+          : `✅ ${fileName} regenerated and committed successfully!`
+      );
+      // Auto-dismiss success after 6 seconds
+      setTimeout(() => setConfigSuccess(''), 6000);
+      await loadConfigurations(false);
+    } catch (err) {
+      console.error(`Failed to regenerate configuration ${fileName}:`, err);
+      const backendMsg = err?.response?.data?.message || err?.response?.data || err?.message;
+      setConfigError(typeof backendMsg === 'string' ? backendMsg : `Failed to regenerate ${fileName}. Check console for details.`);
+    } finally {
+      setRegeneratingFile('');
+      setRegenTarget('');
     }
   };
 
@@ -888,6 +993,7 @@ const ProjectDetail = () => {
             <div className="configuration-info">
               <Card className="config-card-enhanced">
                 <Card.Body>
+                  {/* ── Header ─────────────────────────────────────────── */}
                   <div className="config-header-enhanced">
                     <div className="config-header-left">
                       <div className="config-icon-wrapper">
@@ -898,157 +1004,222 @@ const ProjectDetail = () => {
                         </svg>
                         <h5 className="mb-0">Project Configuration</h5>
                       </div>
-                      <p className="config-subtitle">Build and deployment settings</p>
-                    </div>
-                    {project?.config && (
-                      <Button
-                        className="regenerate-button"
-                        size="sm"
-                        onClick={handleRegenerateConfig}
-                        disabled={loadingConfig}
-                      >
-                        {loadingConfig ? (
-                          <Spinner animation="border" size="sm" className="me-1" />
-                        ) : (
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="me-1">
-                            <polyline points="23 4 23 10 17 10" strokeWidth="2"/>
-                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" strokeWidth="2"/>
-                          </svg>
+                      <p className="config-subtitle">
+                        Manage, preview, and safely regenerate your repository configuration files.
+                        {!loadingConfigs && configsList.length > 0 && (
+                          <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', color: '#8b5cf6', fontWeight: 600 }}>
+                            {configsList.length} file{configsList.length !== 1 ? 's' : ''} found
+                          </span>
                         )}
-                        Regenerate
+                      </p>
+                    </div>
+                    {/* Reload button */}
+                    <div style={{ flexShrink: 0 }}>
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        disabled={loadingConfigs}
+                        onClick={() => { setConfigSuccess(''); setConfigError(''); loadConfigurations(false); }}
+                        style={{ fontSize: '0.8rem', borderColor: 'rgba(108,63,181,0.5)', color: '#b89dff' }}
+                      >
+                        {loadingConfigs ? <Spinner animation="border" size="sm" /> : '↺ Refresh'}
                       </Button>
-                    )}
+                    </div>
                   </div>
 
-                  {loadingConfig && !configContent && !project?.config ? (
-                    <div className="text-center py-5">
-                      <Spinner animation="border" variant="primary" />
-                      <p className="mt-2 text-muted">Loading configuration...</p>
-                    </div>
-                  ) : error && activeTab === 'configuration' ? (
-                    <Alert variant="danger" className="mt-3">
-                      <div className="d-flex align-items-center">
-                        <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                        <div>
-                          <h6>Error loading configuration</h6>
-                          <p className="mb-0">{error}</p>
-                        </div>
-                      </div>
+                  {/* ── Notification banners ────────────────────────────── */}
+                  {error && !configError && (
+                    <Alert variant="danger" className="mt-3 mb-0" dismissible onClose={() => setError('')}>
+                      <strong>Error:</strong> {error}
                     </Alert>
-                   ) : configContent ? (
-                     <>
-                       <div className="config-content-enhanced">
-                         <div className="config-raw-header mb-3">
-                           <div className="d-flex flex-column flex-sm-row align-items-sm-center justify-content-between w-100">
-                             <span>Configuration File Content</span>
-                             <br />
-                             <div className="d-flex flex-wrap align-items-center gap-5 mt-2 mt-sm-0">
-                               {configFilePath && (
-                                 <span
-                                   className="small"
-                                   style={{
-                                     backgroundColor: '#111827',
-                                     color: '#e5e7eb',
-                                     padding: '4px 8px',
-                                     borderRadius: '4px',
-                                     fontFamily: 'monospace'
-                                   }}
-                                 >
-                                   {configFilePath}
-                                 </span>
-                               )}
-                               {project.configFileUrl && (
-                                 <a
-                                   href={project.configFileUrl}
-                                   target="_blank"
-                                   rel="noopener noreferrer"
-                                   className="small ms-sm-2"
-                                 >
-                                   View on GitHub <FaExternalLinkAlt size={10} />
-                                 </a>
-                               )}
-                             </div>
-                           </div>
-                         </div>
-                         <div
-                           style={{
-                             backgroundColor: '#111827',
-                             borderRadius: '8px',
-                             padding: '12px 14px',
-                             border: '1px solid #1f2937',
-                             maxHeight: '400px',
-                             overflow: 'auto'
-                           }}
-                         >
-                           <pre
-                             className="config-json-enhanced mb-0"
-                             style={{
-                               backgroundColor: 'transparent',
-                               color: '#e5e7eb'
-                             }}
-                           >
-                             <code>{configContent}</code>
-                           </pre>
-                         </div>
-                       </div>
+                  )}
+                  {configError && (
+                    <Alert variant="danger" className="mt-3 mb-0" dismissible onClose={() => setConfigError('')}>
+                      <strong>Regeneration failed:</strong> {configError}
+                    </Alert>
+                  )}
+                  {configSuccess && (
+                    <Alert variant="success" className="mt-3 mb-0" dismissible onClose={() => setConfigSuccess('')}
+                      style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.35)', color: '#86efac' }}>
+                      {configSuccess}
+                    </Alert>
+                  )}
 
-                       {/* <div className="mt-3">
-                         <Button
-                           variant="outline-primary"
-                           size="sm"
-                           onClick={handleRegenerateConfig}
-                           disabled={loadingConfig}
-                         >
-                           {loadingConfig ? (
-                             <Spinner animation="border" size="sm" className="me-1" />
-                           ) : null}
-                           Regenerate Config
-                         </Button>
-                       </div> */}
-                     </>
-                   ) : project?.config ? (
-                     <>
-                       <div className="config-content-enhanced">
-                         <div className="config-grid">
-                           {Object.entries(project.config).map(([key, value]) => (
-                             <div key={key} className="config-item-enhanced">
-                               <div className="config-key">
-                                 <code>{key}</code>
-                               </div>
-                               <div className="config-value">
-                                 <code>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</code>
-                               </div>
-                             </div>
-                           ))}
-                         </div>
-                         <div className="config-raw">
-                           <div className="config-raw-header">
-                             <span>Raw JSON</span>
-                           </div>
-                           <pre className="config-json-enhanced">
-                             <code>{JSON.stringify(project.config, null, 2)}</code>
-                           </pre>
-                         </div>
-                       </div>
-
-                       
-                     </>
-                  ) : (
-                    <div className="config-empty">
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" opacity="0.3">
-                        <circle cx="12" cy="12" r="10" strokeWidth="2"/>
-                        <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2"/>
+                  {/* ── Loading state ───────────────────────────────────── */}
+                  {loadingConfigs && configsList.length === 0 ? (
+                    <div className="text-center py-5">
+                      <Spinner animation="border" style={{ color: '#8b5cf6' }} />
+                      <p className="mt-3" style={{ color: '#9ca3af', fontSize: '0.9rem' }}>
+                        Scanning repository for configuration files...
+                      </p>
+                    </div>
+                  ) : !loadingConfigs && configsList.length === 0 ? (
+                    /* ── Empty state — no config files found ──────────────── */
+                    <div className="config-sidebar-empty" style={{ padding: '4rem 2rem' }}>
+                      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        style={{ opacity: 0.25, marginBottom: '1rem' }}>
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2"/>
+                        <polyline points="14 2 14 8 20 8" strokeWidth="2"/>
                       </svg>
-                      <p>No configuration available for this project.</p>
-                      <Button 
-                        variant="outline-primary" 
-                        size="sm" 
-                        onClick={fetchProjectDetails}
-                        className="mt-2"
-                      >
-                        Refresh
-                      </Button>
+                      <p style={{ color: '#9ca3af', fontSize: '0.95rem', fontWeight: 600 }}>
+                        No configuration files found in this repository.
+                      </p>
+                      <p style={{ color: '#6b7280', fontSize: '0.85rem', maxWidth: '380px', textAlign: 'center' }}>
+                        Deploy your project first to generate configuration files, or add a supported config file
+                        (e.g. <code>vercel.json</code>, <code>netlify.toml</code>) to the repository root.
+                      </p>
+                    </div>
+                  ) : (
+                    /* ── Split layout ─────────────────────────────────────── */
+                    <div className="config-split-layout mt-3">
+
+                      {/* ── Left Sidebar ───────────────────────────────── */}
+                      <div className="config-sidebar">
+                        <div className="config-sidebar-header">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                          </svg>
+                          Config Files
+                          <span style={{
+                            marginLeft: 'auto',
+                            background: 'rgba(139,92,246,0.25)',
+                            color: '#c4b5fd',
+                            borderRadius: '10px',
+                            padding: '1px 8px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700
+                          }}>
+                            {configsList.length}
+                          </span>
+                        </div>
+
+                        <ul className="config-sidebar-list">
+                          {configsList.map((file) => {
+                            const name = file.fileName || file.FileName;
+                            const isSelected = selectedFile && (selectedFile.fileName || selectedFile.FileName) === name;
+                            const isRegenerating = regeneratingFile === name;
+
+                            // Determine file type icon
+                            const ext = name.split('.').pop().toLowerCase();
+                            const isJson = ext === 'json';
+                            const isYaml = ext === 'yml' || ext === 'yaml';
+                            const isToml = ext === 'toml';
+
+                            return (
+                              <li
+                                key={name}
+                                className={`config-sidebar-item ${isSelected ? 'active' : ''}`}
+                                onClick={() => setSelectedFile(file)}
+                              >
+                                <div className="config-sidebar-item-header">
+                                  <span className="config-file-name">
+                                    {/* File type color tag */}
+                                    <span style={{
+                                      display: 'inline-block',
+                                      width: 6,
+                                      height: 6,
+                                      borderRadius: '50%',
+                                      marginRight: 6,
+                                      background: isJson ? '#f59e0b' : isYaml ? '#3b82f6' : isToml ? '#10b981' : '#8b5cf6',
+                                      flexShrink: 0
+                                    }} />
+                                    {name}
+                                  </span>
+                                  <Badge
+                                    className="config-status-badge"
+                                    style={{ background: 'rgba(34,197,94,0.18)', color: '#86efac', border: '1px solid rgba(34,197,94,0.3)' }}
+                                  >
+                                    In Repo
+                                  </Badge>
+                                </div>
+
+                                <div className="config-sidebar-item-actions">
+                                  <button
+                                    className="config-item-btn-regen"
+                                    disabled={isRegenerating || regeneratingFile !== ''}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRegenerateFile(name);
+                                    }}
+                                    title={`Safely regenerate ${name} — existing values will be preserved`}
+                                  >
+                                    {isRegenerating ? (
+                                      <><Spinner animation="border" size="sm" /> Regenerating...</>
+                                    ) : (
+                                      '↺ Regenerate'
+                                    )}
+                                  </button>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+
+                      {/* ── Right: File Content Viewer ──────────────────── */}
+                      <div className="config-main-viewer">
+                        {selectedFile ? (
+                          <>
+                            <div className="config-viewer-header">
+                              <span className="config-viewer-title">
+                                {selectedFile.fileName || selectedFile.FileName}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  padding: '0.2rem 0.6rem',
+                                  borderRadius: 4,
+                                  background: 'rgba(34,197,94,0.18)',
+                                  color: '#86efac',
+                                  border: '1px solid rgba(34,197,94,0.3)',
+                                  fontWeight: 600
+                                }}>
+                                  In Repo
+                                </span>
+                                {project?.githubRepoUrl && (
+                                  <a
+                                    href={`${project.githubRepoUrl}/blob/${project.branch || 'main'}/${selectedFile.fileName || selectedFile.FileName}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      fontSize: '0.78rem',
+                                      color: '#60a5fa',
+                                      textDecoration: 'none',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 4
+                                    }}
+                                  >
+                                    <FaGithub size={12} /> View on GitHub
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                            {/* Custom-designed scrollable line-numbered ConfigViewer */}
+                            <ConfigViewer
+                              content={selectedFile.content || selectedFile.Content || ''}
+                              fileName={selectedFile.fileName || selectedFile.FileName}
+                            />
+                          </>
+                        ) : (
+                          <div className="config-viewer-empty">
+                            <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                              style={{ opacity: 0.2 }}>
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="1.5"/>
+                              <polyline points="14 2 14 8 20 8" strokeWidth="1.5"/>
+                              <line x1="16" y1="13" x2="8" y2="13" strokeWidth="1.5"/>
+                              <line x1="16" y1="17" x2="8" y2="17" strokeWidth="1.5"/>
+                              <polyline points="10 9 9 9 8 9" strokeWidth="1.5"/>
+                            </svg>
+                            <p style={{ fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>No file selected</p>
+                            <p style={{ fontSize: '0.8rem', color: '#4b5563' }}>
+                              Click a file from the sidebar to preview its content.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
                     </div>
                   )}
                 </Card.Body>
@@ -1069,6 +1240,21 @@ const ProjectDetail = () => {
           fetchProjectDetails();
           fetchLatestDeployment();
         }}
+      />
+
+      <ConfigRegenModal
+        show={showRegenModal}
+        onHide={() => { setShowRegenModal(false); setRegenTarget(''); }}
+        onConfirm={confirmRegenerateFile}
+        fileName={regenTarget}
+        currentContent={(() => {
+          const targetFile = configsList.find(f => (f.fileName || f.FileName) === regenTarget);
+          return targetFile ? (targetFile.content || targetFile.Content || '') : null;
+        })()}
+        previewContent={regenPreview}
+        loading={loadingRegenPreview}
+        regenerating={regeneratingFile !== ''}
+        error={regenPreviewError}
       />
     </div>
   );

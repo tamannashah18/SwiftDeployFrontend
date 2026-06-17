@@ -471,4 +471,41 @@ export const getPlatformLogs = async (deploymentId) => {
   }
 };
 
+export const getProjectConfigurations = async (projectId) => {
+  try {
+    const response = await apiClient.get(`/projects/${projectId}/configurations`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const getProjectConfigurationFile = async (projectId, fileName) => {
+  try {
+    const response = await apiClient.get(`/projects/${projectId}/configurations/${encodeURIComponent(fileName)}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const regenerateProjectConfiguration = async (projectId, fileName) => {
+  try {
+    const response = await apiClient.post(`/projects/${projectId}/configurations/regenerate`, { fileName });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+export const previewProjectConfiguration = async (projectId, fileName) => {
+  try {
+    const response = await apiClient.post(`/projects/${projectId}/configurations/preview`, { fileName });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+
 

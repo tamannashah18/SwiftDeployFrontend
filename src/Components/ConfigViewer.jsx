@@ -1,88 +1,170 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
+import '../css/ConfigViewer.css';
 
-function ConfigViewer({ config, onUpdate }) {
-  const [activeTab, setActiveTab] = useState('vercel');
+// ─────────────────────────────────────────────────────────────────────────────
+// Lightweight syntax tokenizer — pure JS, zero external deps.
+// Returns an array of { type, text } tokens for a single line.
+// Types: keyword | string | number | comment | key | operator | plain
+// ─────────────────────────────────────────────────────────────────────────────
+function tokenizeLine(line, lang) {
+  if (line === undefined || line === null) return [{ type: 'plain', text: '' }];
+  const trimmed = line.trimStart();
 
-  const generateVercelConfig = () => ({
-    buildCommand: config.buildCommand || 'npm run build',
-    outputDirectory: config.outputDir || 'build',
-    installCommand: 'npm install',
-    framework: config.name?.toLowerCase() || 'react',
-  });
+  // ── Shared: comments ───────────────────────────────────────────────────────
+  if ((lang === 'yaml' || lang === 'toml') && trimmed.startsWith('#')) {
+    return [{ type: 'comment', text: line }];
+  }
 
-  const generateNetlifyConfig = () => ({
-    build: {
-      command: config.buildCommand || 'npm run build',
-      publish: config.outputDir || 'build',
-    },
-    plugins: [],
-  });
-
-  const generateCloudflareConfig = () => ({
-    build: {
-      command: config.buildCommand || 'npm run build',
-      cwd: '.',
-      destination: config.outputDir || 'build',
-    },
-  });
-
-  const configs = {
-    vercel: {
-      name: 'vercel.json',
-      content: generateVercelConfig(),
-    },
-    netlify: {
-      name: 'netlify.toml',
-      content: generateNetlifyConfig(),
-    },
-    cloudflare: {
-      name: 'wrangler.toml',
-      content: generateCloudflareConfig(),
-    },
-  };
-
-  const formatConfig = (content, type) => {
-    if (type === 'netlify') {
-      return `[build]
-  command = "${content.build.command}"
-  publish = "${content.build.publish}"`;
+  // ── Dockerfile ─────────────────────────────────────────────────────────────
+  if (lang === 'dockerfile') {
+    if (trimmed.startsWith('#')) return [{ type: 'comment', text: line }];
+    const kwMatch = trimmed.match(/^(FROM|RUN|CMD|EXPOSE|ENV|ADD|COPY|ENTRYPOINT|VOLUME|USER|WORKDIR|ARG|ONBUILD|STOPSIGNAL|HEALTHCHECK|SHELL)\b/i);
+    if (kwMatch) {
+      const kw = kwMatch[1];
+      const kwStart = line.toUpperCase().indexOf(kw.toUpperCase());
+      return [
+        { type: 'plain',   text: line.substring(0, kwStart) },
+        { type: 'keyword', text: kw },
+        { type: 'plain',   text: line.substring(kwStart + kw.length) },
+      ].filter(t => t.text !== '');
     }
-    return JSON.stringify(content, null, 2);
-  };
+    return [{ type: 'plain', text: line }];
+  }
+
+  // ── JSON ───────────────────────────────────────────────────────────────────
+  if (lang === 'json') {
+    const tokens = [];
+    let rest = line;
+
+    const leadWs = rest.match(/^(\s*)/)[1];
+    if (leadWs) { tokens.push({ type: 'plain', text: leadWs }); rest = rest.slice(leadWs.length); }
+
+    // Key: "something":
+    const keyMatch = rest.match(/^("(?:[^"\\]|\\.)*")(\s*:)/);
+    if (keyMatch) {
+      tokens.push({ type: 'key',      text: keyMatch[1] });
+      tokens.push({ type: 'operator', text: keyMatch[2] });
+      rest = rest.slice(keyMatch[0].length);
+    }
+
+    const strM = rest.match(/^(\s*)("(?:[^"\\]|\\.)*")(.*)/s);
+    const numM = rest.match(/^(\s*)(-?\d+\.?\d*(?:[eE][+-]?\d+)?)(.*)/);
+    const kwM  = rest.match(/^(\s*)(true|false|null)(.*)/);
+    const brM  = rest.match(/^(\s*)([\[\]{},])(.*)/);
+
+    if      (strM) { tokens.push({ type: 'plain',   text: strM[1] }); tokens.push({ type: 'string',  text: strM[2] }); tokens.push({ type: 'plain', text: strM[3] }); }
+    else if (numM) { tokens.push({ type: 'plain',   text: numM[1] }); tokens.push({ type: 'number',  text: numM[2] }); tokens.push({ type: 'plain', text: numM[3] }); }
+    else if (kwM)  { tokens.push({ type: 'plain',   text: kwM[1]  }); tokens.push({ type: 'keyword', text: kwM[2]  }); tokens.push({ type: 'plain', text: kwM[3]  }); }
+    else if (brM)  { tokens.push({ type: 'plain',   text: brM[1]  }); tokens.push({ type: 'operator',text: brM[2]  }); tokens.push({ type: 'plain', text: brM[3]  }); }
+    else if (rest) { tokens.push({ type: 'plain',   text: rest    }); }
+
+    return tokens.filter(t => t.text !== '');
+  }
+
+  // ── YAML ───────────────────────────────────────────────────────────────────
+  if (lang === 'yaml') {
+    if (trimmed === '---' || trimmed === '...') return [{ type: 'operator', text: line }];
+
+    if (trimmed.startsWith('- ') || trimmed === '-') {
+      const dashIdx = line.indexOf('-');
+      return [
+        { type: 'operator', text: line.substring(0, dashIdx + 1) },
+        { type: 'plain',    text: line.substring(dashIdx + 1) },
+      ];
+    }
+
+    const colonIdx = line.indexOf(':');
+    if (colonIdx > 0) {
+      const key = line.substring(0, colonIdx + 1);
+      const afterColon = line.substring(colonIdx + 1);
+      const val = afterColon.trim();
+      const tokens = [{ type: 'key', text: key }];
+
+      if      (val.startsWith('"') || val.startsWith("'")) { tokens.push({ type: 'plain',   text: ' ' }); tokens.push({ type: 'string',  text: val }); }
+      else if (/^-?\d/.test(val))                          { tokens.push({ type: 'plain',   text: ' ' }); tokens.push({ type: 'number',  text: val }); }
+      else if (['true','false','null','~','yes','no'].includes(val)) { tokens.push({ type: 'plain', text: ' ' }); tokens.push({ type: 'keyword', text: val }); }
+      else { tokens.push({ type: 'plain', text: afterColon }); }
+
+      return tokens;
+    }
+    return [{ type: 'plain', text: line }];
+  }
+
+  // ── TOML ───────────────────────────────────────────────────────────────────
+  if (lang === 'toml') {
+    if (trimmed.startsWith('[')) return [{ type: 'keyword', text: line }];
+    const eqIdx = line.indexOf('=');
+    if (eqIdx > 0) {
+      const key = line.substring(0, eqIdx + 1);
+      const val = line.substring(eqIdx + 1).trim();
+      const tokens = [{ type: 'key', text: key }];
+      if      (val.startsWith('"') || val.startsWith("'")) tokens.push({ type: 'string',  text: ' ' + val });
+      else if (/^-?\d/.test(val))                         tokens.push({ type: 'number',  text: ' ' + val });
+      else if (val === 'true' || val === 'false')         tokens.push({ type: 'keyword', text: ' ' + val });
+      else                                                tokens.push({ type: 'plain',   text: ' ' + val });
+      return tokens;
+    }
+    return [{ type: 'plain', text: line }];
+  }
+
+  return [{ type: 'plain', text: line }];
+}
+
+function detectLang(fileName) {
+  if (!fileName) return 'plain';
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith('.json'))                               return 'json';
+  if (lower.endsWith('.yml') || lower.endsWith('.yaml'))     return 'yaml';
+  if (lower.endsWith('.toml'))                               return 'toml';
+  if (lower === 'dockerfile' || lower.endsWith('/dockerfile')) return 'dockerfile';
+  return 'plain';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ConfigViewer
+// Props:
+//   content  (string)  — raw file text
+//   fileName (string)  — used for language detection
+//   height   (string)  — optional CSS height override, default '100%'
+// ─────────────────────────────────────────────────────────────────────────────
+const ConfigViewer = ({ content, fileName, height = '100%' }) => {
+  const lang  = useMemo(() => detectLang(fileName), [fileName]);
+  const lines = useMemo(() => (content || '').split('\n'), [content]);
+  const lineWidth = String(lines.length).length;
 
   return (
-    <div className="card mb-4">
-      <div className="card-header bg-white">
-        <h5 className="mb-0">Configuration Preview</h5>
-      </div>
-      <div className="card-body">
-        <ul className="nav nav-tabs mb-3">
-          {Object.keys(configs).map((key) => (
-            <li className="nav-item" key={key}>
-              <button
-                className={`nav-link ${activeTab === key ? 'active' : ''}`}
-                onClick={() => setActiveTab(key)}
-              >
-                {configs[key].name}
-              </button>
-            </li>
-          ))}
-        </ul>
+    <div className="cv-root" style={{ height }} aria-label={`Code viewer — ${fileName}`}>
+      <table className="cv-table" cellSpacing={0} cellPadding={0}>
+        <tbody>
+          {lines.map((line, i) => {
+            const tokens = lang !== 'plain'
+              ? tokenizeLine(line, lang)
+              : [{ type: 'plain', text: line }];
 
-        <div className="bg-dark text-light p-3 rounded" style={{ fontFamily: 'monospace', fontSize: '14px' }}>
-          <pre className="mb-0">
-            <code>{formatConfig(configs[activeTab].content, activeTab)}</code>
-          </pre>
-        </div>
-
-        <div className="alert alert-info mt-3 mb-0" role="alert">
-          <small>
-            <strong>Note:</strong> This configuration will be automatically generated and committed to your repository during deployment.
-          </small>
-        </div>
-      </div>
+            return (
+              <tr key={i} className="cv-row">
+                <td
+                  className="cv-line-number"
+                  style={{ minWidth: `${lineWidth + 2}ch` }}
+                  aria-hidden="true"
+                  data-line={i + 1}
+                >
+                  {i + 1}
+                </td>
+                <td className="cv-line-content">
+                  {tokens.map((tok, j) => (
+                    <span key={j} className={`cv-tok cv-tok-${tok.type}`}>{tok.text}</span>
+                  ))}
+                  {/* Non-breaking space keeps empty lines at proper height */}
+                  {tokens.every(t => !t.text) && <span>&nbsp;</span>}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
-}
+};
 
 export default ConfigViewer;
