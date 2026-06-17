@@ -7,7 +7,9 @@ const AUTO_DISMISS_MS = 8000;
 
 function ToastItem({ notification, onDismiss }) {
   const timerRef = useRef(null);
-  const isSuccess = notification.status === 'Completed';
+  const status = notification.status?.toLowerCase();
+  const isSuccess = status === 'completed';
+  const isFailed  = status === 'failed';
 
   useEffect(() => {
     timerRef.current = setTimeout(() => onDismiss(notification.id), AUTO_DISMISS_MS);
@@ -27,12 +29,12 @@ function ToastItem({ notification, onDismiss }) {
     : '';
 
   return (
-    <div className={`sd-toast ${isSuccess ? 'sd-toast--success' : 'sd-toast--error'}`} role="alert">
+    <div className={`sd-toast ${isSuccess ? 'sd-toast--success' : isFailed ? 'sd-toast--error' : 'sd-toast--info'}`} role="alert">
       {/* Progress bar */}
       <div className="sd-toast__progress" />
 
       <div className="sd-toast__header">
-        <span className="sd-toast__icon">{isSuccess ? '✅' : '❌'}</span>
+        <span className="sd-toast__icon">{isSuccess ? '✅' : isFailed ? '❌' : 'ℹ️'}</span>
         <span className="sd-toast__title">
           Scheduled Deployment — {platformLabel}
         </span>
