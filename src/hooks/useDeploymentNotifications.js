@@ -44,6 +44,15 @@ export function useDeploymentNotifications(userId) {
       setNotifications((prev) => [notification, ...prev]);
     });
 
+    connection.on('DeploymentStatusUpdated', (payload) => {
+      const notification = {
+        id: `${payload.deploymentId}-${Date.now()}`,
+        ...payload,
+        receivedAt: new Date(),
+      };
+      setNotifications((prev) => [notification, ...prev]);
+    });
+
     connection.onreconnecting(() =>
       console.log('[SignalR] Reconnecting...')
     );
