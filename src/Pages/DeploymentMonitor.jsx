@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { NavigationBar } from '../Components/NavigationBar';
 import { getDeploymentStatus, pollDeployment, getDeploymentById, updateDeploymentStatus } from '../api/deployments';
 import { FaCheckCircle, FaTimesCircle, FaSpinner } from 'react-icons/fa';
+import { useAuth } from '../Contexts/AuthContext';
+import { useRealTimeDeployment } from '../hooks/useRealTimeDeployment';
 
 function DeploymentMonitor() {
   const { projectId } = useParams();
@@ -12,6 +14,47 @@ function DeploymentMonitor() {
   const [mongoDeployment, setMongoDeployment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const { currentUser } = useAuth();
+  const userId = currentUser?.id;
+  const mongoDeploymentId = location.state?.mongoDeploymentId || deployment?.mongoDeploymentId || mongoDeployment?.id || mongoDeployment?.Id;
+
+  // Real-time status updates via SignalR
+  useRealTimeDeployment(
+    projectId,
+    mongoDeploymentId,
+    userId,
+    React.useCallback((status) => {
+      console.log('[SignalR Callback] Received status update:', status);
+      const rawStatus = status.status;
+      const isSuccess = status.success === true || status.Success === true || rawStatus === 'Completed';
+      
+      const normalizedStatus = {
+        ...status,
+        status: rawStatus,
+        message: status.message || status.Message || (isSuccess ? 'Deployment completed successfully!' : 'Processing...'),
+        githubRepoUrl: status.githubRepoUrl || status.GitHubRepoUrl,
+        deploymentUrl: status.deploymentUrl || status.DeploymentUrl,
+        configFileUrl: status.configFileUrl || status.ConfigFileUrl,
+        projectId: status.projectId || status.ProjectId || projectId,
+        success: isSuccess,
+        progress: status.progress || status.Progress || (isSuccess ? 100 : 0),
+        currentStep: status.currentStep || status.CurrentStep,
+        mongoDeploymentId: status.mongoDeploymentId || status.MongoDeploymentId || status.deploymentId || mongoDeploymentId
+      };
+
+      setDeployment(normalizedStatus);
+      setLoading(false);
+
+      // Refresh MongoDB deployment data
+      const depId = normalizedStatus.mongoDeploymentId;
+      if (depId) {
+        getDeploymentById(depId).then((updatedData) => {
+          setMongoDeployment(updatedData);
+        }).catch(console.warn);
+      }
+    }, [projectId, mongoDeploymentId])
+  );
 
   useEffect(() => {
     let isMounted = true;
