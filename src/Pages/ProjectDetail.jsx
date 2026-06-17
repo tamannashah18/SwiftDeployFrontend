@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Button, Spinner, Alert, Badge } from 'react-bootstrap';
 import { ArrowLeft } from 'react-bootstrap-icons';
@@ -10,7 +10,9 @@ import DeploymentModal from '../Components/DeploymentModal';
 import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
 import ConfigViewer from '../Components/ConfigViewer';
 import ConfigRegenModal from '../Components/ConfigRegenModal';
+import DeploymentLogsEmbedded from '../Components/DeploymentLogsEmbedded';
 import { FaClock, FaCalendarAlt } from 'react-icons/fa';
+import { useDeploymentNotifications } from '../hooks/useDeploymentNotifications';
 import '../css/ProjectDetail.css';
 
 const ProjectDetail = () => {
@@ -47,6 +49,11 @@ const ProjectDetail = () => {
   const [regenPreviewError, setRegenPreviewError] = useState(null);
 
 
+  // Get userId for SignalR subscription
+  const userId = (() => { try { return JSON.parse(localStorage.getItem('user'))?.id || JSON.parse(localStorage.getItem('user'))?.userId || JSON.parse(localStorage.getItem('user'))?._id; } catch { return null; } })();
+  const { notifications } = useDeploymentNotifications(userId);
+  const prevNotifCount = useRef(0);
+
   // ⭐ 1. Fetch project details on mount
   useEffect(() => {
     fetchProjectDetails();
@@ -66,31 +73,61 @@ const ProjectDetail = () => {
     }
   }, [project]);
 
-  // ⭐ 3. Fetch deployments when deployment tab is active
+  // ⭐ SignalR: Auto-refresh history when webhook fires a DeploymentStatusUpdated event
   useEffect(() => {
-    const fetchDeployments = async () => {
-      if (activeTab === 'deployment' && project?.repoId) {
-        try {
-          setLoadingDeployments(true);
-          const deployments = await getDeploymentsByRepoId(project.repoId);
-          if (Array.isArray(deployments)) {
-            setAllDeployments(deployments);
-          } else if (deployments) {
-            setAllDeployments([deployments]);
-          } else {
-            setAllDeployments([]);
-          }
-        } catch (err) {
-          console.warn('Failed to fetch deployments:', err);
-          setAllDeployments([]);
-        } finally {
-          setLoadingDeployments(false);
-        }
-      }
-    };
+    if (notifications.length > prevNotifCount.current && project?.repoId) {
+      prevNotifCount.current = notifications.length;
+      // A new event arrived — re-fetch the deployment history
+      getDeploymentsByRepoId(project.repoId)
+        .then(deployments => {
+          if (Array.isArray(deployments)) setAllDeployments(deployments);
+          else if (deployments) setAllDeployments([deployments]);
+        })
+        .catch(console.warn);
+    }
+  }, [notifications, project?.repoId]);
 
-    fetchDeployments();
+  // ⭐ 3. Fetch deployments when deployment tab is active
+  const fetchDeploymentsNow = async () => {
+    if (project?.repoId) {
+      try {
+        setLoadingDeployments(true);
+        const deployments = await getDeploymentsByRepoId(project.repoId);
+        if (Array.isArray(deployments)) setAllDeployments(deployments);
+        else if (deployments) setAllDeployments([deployments]);
+        else setAllDeployments([]);
+      } catch (err) {
+        console.warn('Failed to fetch deployments:', err);
+        setAllDeployments([]);
+      } finally {
+        setLoadingDeployments(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'deployment' && project?.repoId) {
+      fetchDeploymentsNow();
+    }
   }, [activeTab, project?.repoId]);
+
+  // ⭐ Auto-poll every 30s on deployment tab while any entry is still "processing"
+  useEffect(() => {
+    if (activeTab !== 'deployment' || !project?.repoId) return;
+    const hasProcessing = allDeployments.some(d => (d.status || '').toLowerCase() === 'processing');
+    if (!hasProcessing) return;
+
+    const interval = setInterval(() => {
+      getDeploymentsByRepoId(project.repoId)
+        .then(deployments => {
+          if (Array.isArray(deployments)) setAllDeployments(deployments);
+          else if (deployments) setAllDeployments([deployments]);
+        })
+        .catch(console.warn);
+    }, 30000); // poll every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [activeTab, project?.repoId, allDeployments]);
 
   const fetchLatestDeployment = async () => {
     if (project?.repoId) {
@@ -490,8 +527,12 @@ const ProjectDetail = () => {
     const statusMap = {
       Completed: 'success',
       completed: 'success',
+      Success: 'success',
+      success: 'success',
       Failed: 'danger',
       failed: 'danger',
+      Error: 'danger',
+      error: 'danger',
       Deploying: 'warning',
       deploying: 'warning',
       Uploading: 'info',
@@ -569,6 +610,12 @@ const ProjectDetail = () => {
             onClick={() => setActiveTab('deployment')}
           >
             Deployment Info
+          </div>
+          <div 
+            className={`tab ${activeTab === 'logs' ? 'active' : ''}`}
+            onClick={() => setActiveTab('logs')}
+          >
+            Deployment Logs
           </div>
           <div 
             className={`tab ${activeTab === 'configuration' ? 'active' : ''}`}
@@ -798,8 +845,8 @@ const ProjectDetail = () => {
                       const deploymentId = deployment.id || deployment._id || deployment.Id;
                       const status = deployment.status || 'unknown';
                       const statusLower = status.toLowerCase();
-                      const isSuccess = statusLower === 'completed';
-                      const isFailed = statusLower === 'failed';
+                      const isSuccess = statusLower === 'completed' || statusLower === 'success';
+                      const isFailed = statusLower === 'failed' || statusLower === 'error';
                       const deployedAt = deployment.deployedAt ? new Date(deployment.deployedAt) : null;
                       
                       const getPlatformInfo = (platform) => {
@@ -920,6 +967,15 @@ const ProjectDetail = () => {
             </div>
           )}
 
+          {activeTab === 'logs' && (
+            <div className="deployment-logs-tab">
+              <DeploymentLogsEmbedded 
+                deploymentId={latestDeployment?.id || latestDeployment?._id || latestDeployment?.Id || deploymentInfo?.mongoDeploymentId || (allDeployments.length > 0 ? (allDeployments[0].id || allDeployments[0]._id || allDeployments[0].Id) : null)} 
+                platform={latestDeployment?.platform || project?.platform}
+              />
+            </div>
+          )}
+
           {activeTab === 'upcoming' && (
             <div className="upcoming-deployments">
               <h5 className="mb-3" style={{ color: '#ffffff' }}>Upcoming Deployments</h5>
@@ -934,6 +990,14 @@ const ProjectDetail = () => {
                     const scheduledTime = deployment.scheduledTime ? new Date(deployment.scheduledTime) : null;
                     const isExecuted = deployment.isExecuted;
                     const status = deployment.status || 'Pending';
+                    const statusLower = status.toLowerCase();
+                    const getScheduledBadgeVariant = () => {
+                      if (statusLower === 'failed' || statusLower === 'error') return 'danger';
+                      if (statusLower === 'completed' || statusLower === 'success') return 'success';
+                      if (statusLower === 'deploying' || statusLower === 'pending') return 'warning';
+                      if (isExecuted) return 'success';
+                      return 'info';
+                    };
                     
                     return (
                       <Card 
@@ -947,7 +1011,7 @@ const ProjectDetail = () => {
                         <Card.Body>
                           <div className="d-flex justify-content-between align-items-start mb-3">
                             <div>
-                              <Badge bg={isExecuted ? 'success' : 'info'} className="mb-2">
+                              <Badge bg={getScheduledBadgeVariant()} className="mb-2">
                                 {status.charAt(0).toUpperCase() + status.slice(1)}
                               </Badge>
                               <h6 style={{ color: '#ffffff' }} className="mb-1">
