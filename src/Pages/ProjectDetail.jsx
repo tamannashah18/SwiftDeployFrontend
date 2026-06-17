@@ -8,6 +8,7 @@ import { getProjectDetails, deleteProject, regenerateConfig, getDeploymentsByRep
 import { NavigationBar } from '../Components/NavigationBar';
 import DeploymentModal from '../Components/DeploymentModal';
 import DeploymentMonitorEmbedded from '../Components/DeploymentMonitorEmbedded';
+import DeploymentLogsEmbedded from '../Components/DeploymentLogsEmbedded';
 import { FaClock, FaCalendarAlt } from 'react-icons/fa';
 import { useDeploymentNotifications } from '../hooks/useDeploymentNotifications';
 import '../css/ProjectDetail.css';
@@ -506,6 +507,12 @@ const ProjectDetail = () => {
             Deployment Info
           </div>
           <div 
+            className={`tab ${activeTab === 'logs' ? 'active' : ''}`}
+            onClick={() => setActiveTab('logs')}
+          >
+            Deployment Logs
+          </div>
+          <div 
             className={`tab ${activeTab === 'configuration' ? 'active' : ''}`}
             onClick={() => setActiveTab('configuration')}
           >
@@ -852,6 +859,15 @@ const ProjectDetail = () => {
                   </Alert>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'logs' && (
+            <div className="deployment-logs-tab">
+              <DeploymentLogsEmbedded 
+                deploymentId={latestDeployment?.id || latestDeployment?._id || latestDeployment?.Id || deploymentInfo?.mongoDeploymentId || (allDeployments.length > 0 ? (allDeployments[0].id || allDeployments[0]._id || allDeployments[0].Id) : null)} 
+                platform={latestDeployment?.platform || project?.platform}
+              />
             </div>
           )}
 
