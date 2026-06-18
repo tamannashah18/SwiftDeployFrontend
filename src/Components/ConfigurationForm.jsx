@@ -13,6 +13,24 @@ const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack, selectedPlatf
       case 'nuxtjs': return { buildCmd: 'npm run build', outDir: 'dist', installCmd: 'npm install', type: 'Framework' };
       case 'svelte': return { buildCmd: 'npm run build', outDir: 'dist', installCmd: 'npm install', type: 'Framework' };
       case 'gatsby': return { buildCmd: 'npm run build', outDir: 'public', installCmd: 'npm install', type: 'Framework' };
+      case 'php': {
+        const isStaticHost = selectedPlatform === 'githubpages' || selectedPlatform === 'netlify' || selectedPlatform === 'cloudflare';
+        return {
+          buildCmd: isStaticHost ? 'mkdir -p dist && if [ -f index.php ]; then php index.php > dist/index.html; fi' : '',
+          outDir: isStaticHost ? 'dist' : '.',
+          installCmd: '',
+          type: 'Backend'
+        };
+      }
+      case 'python': {
+        const isStaticHost = selectedPlatform === 'githubpages' || selectedPlatform === 'netlify' || selectedPlatform === 'cloudflare' || selectedPlatform === 'vercel' || selectedPlatform === 'aws' || selectedPlatform === 'azure' || selectedPlatform === 'gcp';
+        return {
+          buildCmd: isStaticHost ? 'python freeze.py' : '',
+          outDir: isStaticHost ? 'dist' : '.',
+          installCmd: 'pip install -r requirements.txt',
+          type: isStaticHost ? 'Static' : 'Backend'
+        };
+      }
       case 'static': return { buildCmd: '', outDir: '.', installCmd: '', type: 'Static' };
       default: return { buildCmd: 'npm run build', outDir: 'dist', installCmd: 'npm install', type: 'Framework' };
     }
@@ -232,6 +250,8 @@ const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack, selectedPlatf
                   <option value="nuxtjs">Nuxt.js</option>
                   <option value="gatsby">Gatsby</option>
                   <option value="svelte">Svelte</option>
+                  <option value="php">PHP App</option>
+                  <option value="python">Python App</option>
                 </Form.Select>
               </Form.Group>
               
@@ -243,6 +263,7 @@ const ConfigurationForm = ({ onSubmit, initialConfig = {}, onBack, selectedPlatf
                 >
                   <option value="Static">Static Site</option>
                   <option value="Framework">JavaScript Framework</option>
+                  <option value="Backend">Backend Service (PHP, Node, Python, etc.)</option>
                 </Form.Select>
               </Form.Group>
             </Col>
