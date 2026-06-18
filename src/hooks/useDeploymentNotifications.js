@@ -44,6 +44,26 @@ export function useDeploymentNotifications(userId) {
       setNotifications((prev) => [notification, ...prev]);
     });
 
+    connection.on('DeploymentStatusUpdated', (payload) => {
+      const status = payload.status?.toLowerCase();
+      // Only show a toast for terminal states — skip pure progress updates
+      if (status !== 'completed' && status !== 'failed') return;
+
+      const notification = {
+        id: `${payload.deploymentId}-toast`,   // stable ID so duplicates replace
+        ...payload,
+        receivedAt: new Date(),
+      };
+
+      setNotifications((prev) => {
+        // Replace existing toast for this deployment, or prepend a new one
+        const exists = prev.some((n) => n.id === notification.id);
+        return exists
+          ? prev.map((n) => n.id === notification.id ? notification : n)
+          : [notification, ...prev];
+      });
+    });
+
     connection.onreconnecting(() =>
       console.log('[SignalR] Reconnecting...')
     );

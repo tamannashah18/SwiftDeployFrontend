@@ -1,5 +1,5 @@
 import React from 'react';
-import { SiNetlify, SiVercel, SiRailway, SiRender, SiFirebase } from 'react-icons/si';
+import { SiNetlify, SiVercel, SiRailway, SiRender, SiGooglecloud } from 'react-icons/si';
 import { FaCloudflare, FaGithub, FaAws } from 'react-icons/fa';
 import { VscAzure } from 'react-icons/vsc';
 
@@ -39,9 +39,9 @@ function PlatformSelector({ selectedPlatform, onSelect }) {
     },
     {
       id: 'gcp',
-      name: 'GCP (Firebase)',
-      icon: SiFirebase,
-      color: '#FFCA28',
+      name: 'GCP',
+      icon: SiGooglecloud,
+      color: '#4285F4',
       description: 'Fast and secure global hosting by Google',
       features: ['Global CDN', 'Custom Domains', 'Free SSL'],
     },

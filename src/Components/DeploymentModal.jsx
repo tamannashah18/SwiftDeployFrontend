@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Card, Form, Alert, Spinner, Badge, InputGroup } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { SiNetlify, SiVercel, SiCloudflare, SiFirebase, SiRender, SiRailway } from 'react-icons/si';
+import { SiNetlify, SiVercel, SiCloudflare, SiGooglecloud, SiRender, SiRailway } from 'react-icons/si';
 import { FaGithub, FaCheckCircle, FaCalendarAlt, FaClock, FaAws } from 'react-icons/fa';
 import { VscAzure } from 'react-icons/vsc';
 import { analyzeAndSuggest, deployToUnifiedPlatform, scheduleUploadDeployment, scheduleGitHubDeployment } from '../api/deployments';
@@ -69,7 +69,7 @@ const [optimizations, setOptimizations] = useState([]);
     cloudflare: { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
     'cloudflare pages': { name: 'Cloudflare Pages', icon: SiCloudflare, color: '#F38020', requiresOAuth: false },
     aws: { name: 'AWS S3', icon: FaAws, color: '#FF9900', requiresOAuth: false },
-    gcp: { name: 'GCP (Firebase)', icon: SiFirebase, color: '#FFCA28', requiresOAuth: false },
+    gcp: { name: 'GCP', icon: SiGooglecloud, color: '#4285F4', requiresOAuth: false },
     azure: { name: 'Azure Static Apps', icon: VscAzure, color: '#0089D6', requiresOAuth: false },
     render: { name: 'Render', icon: SiRender, color: '#46E3B7', requiresOAuth: false },
     railway: { name: 'Railway', icon: SiRailway, color: '#0B0D0E', requiresOAuth: false },
